@@ -1,4 +1,38 @@
+// ==========================================
+// 1. STRICT SESSION VALIDATION HELPER
+// ==========================================
+function hasValidSession() {
+    const token = localStorage.getItem('authToken');
+    const user = localStorage.getItem('currentUser');
+    
+    if (!token || !user) return false;
+    if (token === 'undefined' || token === 'null') return false;
+    if (user === 'undefined' || user === 'null') return false;
+    
+    try {
+        const parsed = JSON.parse(user);
+        return Boolean(parsed && typeof parsed === 'object');
+    } catch (e) {
+        return false;
+    }
+}
+
+// ==========================================
+// 2. BFCACHE ROUTE GUARD
+// ==========================================
+window.addEventListener('pageshow', function () {
+    if (hasValidSession()) {
+        window.location.replace('dashboard.html');
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Check initial DOM load
+    if (hasValidSession()) {
+        window.location.replace('dashboard.html');
+        return;
+    }
+
     // Element selections
     const loginForm = document.getElementById('loginForm');
     const loginBtn = document.getElementById('loginBtn');
@@ -8,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const togglePasswordBtn = document.getElementById('togglePassword');
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
 
-    // 1. Password Visibility Toggle
+    // Password Visibility Toggle
     if (togglePasswordBtn && passwordInput) {
         togglePasswordBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -18,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 2. Real-Time Stats Fetcher (Polls every 5s)
+    // Real-Time Stats Fetcher (Polls every 5s)
     async function fetchRealtimeStats() {
         try {
             const response = await fetch('api/stats.php');
@@ -35,19 +69,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (avgEl) avgEl.innerText = `${stats.avgResolution ?? 0} days`;
             }
         } catch (err) {
-            // Silently retain values if the endpoint is temporarily unreachable
+            // Silently retain values
         }
     }
 
     fetchRealtimeStats();
     setInterval(fetchRealtimeStats, 5000);
 
-    // 3. Form Submission & Authentication
+    // Form Submission & Authentication
     if (loginForm) {
         loginForm.addEventListener('submit', async (event) => {
             event.preventDefault();
 
-            // Hide previous error banner
             if (errorBanner) {
                 errorBanner.style.display = 'none';
                 errorBanner.innerText = '';
@@ -56,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const username = usernameInput.value.trim();
             const password = passwordInput.value;
 
-            // Client-side password length check
             if (password.length < 6) {
                 if (errorBanner) {
                     errorBanner.innerText = 'Password must be at least 6 characters.';
@@ -71,20 +103,16 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch('api/login.php', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
                 });
 
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    // Save specific logged in account
                     localStorage.setItem('authToken', data.token);
                     localStorage.setItem('currentUser', JSON.stringify(data.user));
-
-                    window.location.href = 'dashboard.html';
+                    window.location.replace('dashboard.html');
                 } else {
                     if (errorBanner) {
                         errorBanner.innerText = data.message || 'Invalid credentials.';
@@ -104,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-   // 4. Forgot Password Flow with Account Existence Verification
+    // Forgot Password Flow
     const forgotModal = document.getElementById('forgotModal');
     const closeForgotModal = document.getElementById('closeForgotModal');
     const dismissForgotBtn = document.getElementById('dismissForgotBtn');
@@ -118,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
         forgotPasswordLink.addEventListener('click', async (e) => {
             e.preventDefault();
 
-            // Clear previous error
             if (errorBanner) {
                 errorBanner.style.display = 'none';
                 errorBanner.innerText = '';
@@ -126,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const username = usernameInput ? usernameInput.value.trim() : '';
 
-            // Step 1: Prompt user if the username field is blank
             if (!username) {
                 if (errorBanner) {
                     errorBanner.innerText = 'Please enter your username or email above first.';
@@ -136,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Step 2: Query the database to check if the user is registered
             try {
                 const response = await fetch('api/check_user.php', {
                     method: 'POST',
@@ -147,21 +172,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (data.success && data.exists) {
-                    // Registered user detected: Open the admin reset modal
                     if (forgotModalUserDisplay) {
                         forgotModalUserDisplay.innerText = data.name || username;
                     }
                     if (forgotModal) forgotModal.style.display = 'flex';
                 } else {
-                    // Unregistered user detected: Show error asking for existing account
                     if (errorBanner) {
-                        errorBanner.innerText = data.message || 'Account not registered. Please enter an existing account or username.';
+                        errorBanner.innerText = data.message || 'Account not registered.';
                         errorBanner.style.display = 'block';
                     }
                     if (usernameInput) usernameInput.focus();
                 }
             } catch (err) {
-                console.error('Check user error:', err);
                 if (errorBanner) {
                     errorBanner.innerText = 'Unable to verify account. Please try again.';
                     errorBanner.style.display = 'block';

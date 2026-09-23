@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BalangayLog - Case Management System</title>
+    
+    <!-- Immediate Guard: If already logged in, do not render login page -->
+    <script>
+        try {
+            var token = localStorage.getItem('authToken');
+            var user = localStorage.getItem('currentUser');
+            if (token && user && token !== 'undefined' && user !== 'undefined') {
+                window.location.replace('dashboard.html');
+            }
+        } catch (e) {}
+    </script>
+
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -80,7 +92,7 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+  <script src="script.js?v=99"></script>
 
    <!-- ADMINISTRATIVE PASSWORD RESET MODAL -->
     <div class="modal-overlay" id="forgotModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">

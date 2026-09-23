@@ -1,4 +1,43 @@
 document.addEventListener('DOMContentLoaded', () => {
+
+ // ==========================================
+// 0. TOP-LEVEL AUTH & HISTORY TRAP
+// Must run OUTSIDE DOMContentLoaded for bfcache support
+// ==========================================
+(function enforceAuthAndHistory() {
+    const token = localStorage.getItem('authToken');
+    const user = localStorage.getItem('currentUser');
+
+    // Immediate kick out if not logged in
+    if (!token || !user) {
+        window.location.replace('index.html');
+        return;
+    }
+
+    // Push duplicate history state to neutralize Back button
+    history.pushState(null, '', location.href);
+    window.addEventListener('popstate', function () {
+        history.pushState(null, '', location.href);
+    });
+
+    // Catch Back/Forward cache restores
+    window.addEventListener('pageshow', function (event) {
+        const activeToken = localStorage.getItem('authToken');
+        const activeUser = localStorage.getItem('currentUser');
+        if (!activeToken || !activeUser) {
+            window.location.replace('index.html');
+        }
+    });
+    // 3. Kick out immediately if another tab logs out or storage is cleared
+    window.addEventListener('storage', function (event) {
+        if (!localStorage.getItem('authToken') || !localStorage.getItem('currentUser')) {
+            window.location.replace('index.html');
+        }
+    });
+})();
+
+document.addEventListener('DOMContentLoaded', () => {
+
     // ==========================================
     // 1. LIVE CLOCK & GREETING
     // ==========================================
@@ -24,10 +63,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     updateClock();
     setInterval(updateClock, 1000);
+})
 
     // ==========================================
     // 2. LEAFLET MAP INITIALIZATION
     // ==========================================
+   
     let mapInstance = null;
     let markerInstance = null;
 
@@ -546,13 +587,13 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('Session parse error:', e);
     }
 
-    const logoutBtn = document.getElementById('logoutBtn');
+const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
             localStorage.clear();
             sessionStorage.clear();
-            window.location.href = 'index.html';
+            window.location.replace('index.html');
         });
     }
     // ==========================================

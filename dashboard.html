@@ -4,17 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BalangayLog - Dashboard</title>
-    
-    <!-- Professional Modern Font -->
+
+    <!-- Immediate Guard: If not logged in, bounce to index before DOM renders -->
+    <script>
+        try {
+            var token = localStorage.getItem('authToken');
+            var user = localStorage.getItem('currentUser');
+            if (!token || !user || token === 'undefined' || user === 'undefined') {
+                window.location.replace('index.html');
+            }
+        } catch (e) {
+            window.location.replace('index.html');
+        }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Link our custom stylesheet -->
     <link rel="stylesheet" href="dashboard.css">
-
-
-    <!----for chart script-->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>

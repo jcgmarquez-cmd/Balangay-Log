@@ -1,0 +1,14 @@
+# Database & Environment secrets
+api/db_config.php
+config.php
+.env
+
+# OS / Editor clutter
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node / Vendor (if applicable)
+node_modules/
+vendor/
