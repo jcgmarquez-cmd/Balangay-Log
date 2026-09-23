@@ -74,29 +74,49 @@
                     </div>
 
                     <button type="submit" id="loginBtn" class="primary-btn">Sign In</button>
-                    <a href="#" class="forgot-link">Forgot password?</a>
+                    <a href="#" id="forgotPasswordLink" class="forgot-link">Forgot password?</a>
                 </form>
-
-                <!-- DEMO ACCOUNTS SECTION -->
-                <div class="demo-section">
-                    <div class="demo-divider">
-                        <span>DEMO ACCOUNTS</span>
-                    </div>
-                    <div class="demo-grid">
-                        <button type="button" class="demo-chip" data-user="capitan.reyes" data-pass="captain123">
-                            <span class="demo-name">Reyes</span>
-                            <span class="demo-role">Captain</span>
-                        </button>
-                        <button type="button" class="demo-chip" data-user="officer.santos" data-pass="officer123">
-                            <span class="demo-name">Santos</span>
-                            <span class="demo-role">Officer</span>
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
 
     <script src="script.js"></script>
+
+   <!-- ADMINISTRATIVE PASSWORD RESET MODAL -->
+    <div class="modal-overlay" id="forgotModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: #ffffff; border-radius: 16px; max-width: 440px; width: 90%; padding: 28px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); position: relative;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="background: #eff6ff; color: #2563eb; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                    </div>
+                    <h3 style="margin: 0; font-size: 1.15rem; color: #0f172a; font-weight: 700;">Password Reset Policy</h3>
+                </div>
+                <button type="button" id="closeForgotModal" style="background: transparent; border: none; font-size: 24px; color: #94a3b8; cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+
+            <p style="font-size: 0.9rem; color: #475569; line-height: 1.5; margin-bottom: 14px;">
+                Verified Account: <strong id="forgotModalUserDisplay" style="color: #0f172a;">Official Account</strong>
+            </p>
+
+            <p style="font-size: 0.9rem; color: #475569; line-height: 1.5; margin-bottom: 18px;">
+                Password reset requests must be submitted directly to the Barangay System Administrator.
+            </p>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; font-size: 0.85rem; color: #334155; margin-bottom: 20px;">
+                <p style="margin: 0 0 6px 0;"><strong>Required Steps:</strong></p>
+                <ul style="margin: 0; padding-left: 18px; line-height: 1.6;">
+                    <li>Contact the <strong>Barangay Secretary</strong> or ICT Administrator.</li>
+                    <li>Present valid barangay identification credentials.</li>
+                    <li>The administrator will generate and issue a temporary login key.</li>
+                </ul>
+            </div>
+
+            <button type="button" id="dismissForgotBtn" class="primary-btn" style="width: 100%; padding: 10px; font-size: 0.95rem;">Understood</button>
+        </div>
+    </div>
 </body>
 </html>

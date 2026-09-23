@@ -29,11 +29,11 @@
                 </div>
             </div>
 
-            <div class="user-profile-badge">
-                <div class="user-avatar">MS</div>
+          <div class="user-profile-badge">
+                <div class="user-avatar" id="userAvatar">--</div>
                 <div class="user-info">
-                    <span class="user-name">Off. Maria Santos</span>
-                    <span class="user-role-pill">Officer</span>
+                    <span class="user-name" id="userNameDisplay">Loading...</span>
+                    <span class="user-role-pill" id="userRoleDisplay">Officer</span>
                 </div>
             </div>
 
@@ -113,7 +113,7 @@
           <!-- 1. Top Header Toolbar -->
 <header class="dashboard-header">
     <div class="header-titles">
-        <h1 class="welcome-heading">Good evening, Maria</h1>
+        <h1 class="welcome-heading" id="welcomeHeading">Welcome</h1>
         <span class="sub-header-details" id="totalCasesSubtext"></span>
     </div>
     <div class="header-actions">
@@ -389,6 +389,6 @@
 </div>
 
     <!-- Link Dashboard JS logic -->
-    <script src="dashboard.js"></script>
+    <script src="dashboard.js?v=2"></script>
 </body>
 </html>

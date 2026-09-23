@@ -492,24 +492,58 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(fetchNotifications, 8000);
 
     // ==========================================
-    // 6. SESSION & LOGOUT
+    // 6. SESSION, USER PROFILE & LOGOUT
     // ==========================================
     try {
         const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-        if (currentUser) {
-            const nameDisplay = document.getElementById('userNameDisplay');
-            const roleDisplay = document.getElementById('userRoleDisplay');
-            const avatar = document.getElementById('userAvatar');
+        const authToken = localStorage.getItem('authToken');
 
-            if (nameDisplay) nameDisplay.innerText = currentUser.name || 'Officer';
-            if (roleDisplay) roleDisplay.innerText = currentUser.role || 'Officer';
-            if (avatar && currentUser.name) {
-                const initials = currentUser.name.split(' ').map(n => n[0]).join('');
-                avatar.innerText = initials.substring(0, 2).toUpperCase();
-            }
+        // If not logged in, redirect to login page immediately
+        if (!currentUser || !authToken) {
+            window.location.href = 'index.html';
+            return;
         }
+
+        const nameDisplay = document.getElementById('userNameDisplay');
+        const roleDisplay = document.getElementById('userRoleDisplay');
+        const avatar = document.getElementById('userAvatar');
+        const welcomeHeading = document.getElementById('welcomeHeading');
+
+        const fullName = currentUser.full_name || currentUser.username || 'User';
+        const role = (currentUser.role || 'OFFICER').toUpperCase();
+
+        // 1. Update Sidebar
+        if (nameDisplay) nameDisplay.innerText = fullName;
+        if (roleDisplay) {
+            roleDisplay.innerText = role.charAt(0) + role.slice(1).toLowerCase();
+            roleDisplay.className = `user-role-pill role-${role.toLowerCase()}`;
+        }
+        if (avatar) {
+            const initials = fullName
+                .split(' ')
+                .filter(w => w.length > 0)
+                .map(w => w[0].toUpperCase())
+                .slice(0, 2)
+                .join('');
+            avatar.innerText = initials || 'BL';
+        }
+
+        // 2. Dynamic Time-of-Day Greeting
+        if (welcomeHeading) {
+            const currentHour = new Date().getHours();
+            let greeting = 'Good evening';
+            if (currentHour >= 5 && currentHour < 12) {
+                greeting = 'Good morning';
+            } else if (currentHour >= 12 && currentHour < 18) {
+                greeting = 'Good afternoon';
+            }
+            // Display greeting with first name
+            const firstName = fullName.split(' ')[0] || 'Official';
+            welcomeHeading.innerText = `${greeting}, ${firstName}`;
+        }
+
     } catch (e) {
-        console.warn('Session parse skipped:', e);
+        console.warn('Session parse error:', e);
     }
 
     const logoutBtn = document.getElementById('logoutBtn');
@@ -517,10 +551,10 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
             localStorage.clear();
+            sessionStorage.clear();
             window.location.href = 'index.html';
         });
     }
-
     // ==========================================
     // 7. INCIDENT TREND CHART
     // ==========================================
