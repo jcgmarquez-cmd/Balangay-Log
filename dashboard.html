@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BalangayLog - Dashboard</title>
+    
+    <!-- Professional Modern Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Link our custom stylesheet -->
+    <link rel="stylesheet" href="dashboard.css">
+
+
+    <!----for chart script-->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- 1. Left Sidebar will go here -->
+        <aside class="sidebar">
+            <div class="brand-box">
+                <div class="brand-avatar">B</div>
+                <div class="brand-text">
+                    <h2 class="brand-name">BalangayLog</h2>
+                    <span class="brand-sub">BRGY. DUALE</span>
+                </div>
+            </div>
+
+            <div class="user-profile-badge">
+                <div class="user-avatar">MS</div>
+                <div class="user-info">
+                    <span class="user-name">Off. Maria Santos</span>
+                    <span class="user-role-pill">Officer</span>
+                </div>
+            </div>
+
+            <!-- 3. Navigation Menu -->
+<nav class="nav-menu">
+    <span class="nav-section-title">OVERVIEW</span>
+    <a href="#" class="nav-item active">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+        <span>Dashboard</span>
+    </a>
+
+    <span class="nav-section-title">CASES</span>
+    <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+        <span>All Cases</span>
+    </a>
+    <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <span>Encode New Case</span>
+    </a>
+    <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <span>Urgent / Emergency</span>
+        <span class="counter-badge badge-red" id="sidebarUrgentBadge" style="display: none;"></span>
+    </a>
+
+    <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M16 12l-4-4-4 4M12 16V8"></path></svg>
+        <span>Lupon / Mediation</span>
+    </a>
+
+    <span class="nav-section-title">COMMUNITY</span>
+    <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        <span>Barangay Alerts</span>
+    </a>
+    <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>Residents</span>
+    </a>
+    <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+        <span>Spam Verification</span>
+        <span class="counter-badge badge-red" id="sidebarSpamBadge" style="display: none"></span>
+    </a>
+
+    <span class="nav-section-title">REPORTING</span>
+    <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        <span>Reports</span>
+    </a>
+    <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <span>Audit Trail</span>
+    </a>
+    <a href="#" class="nav-item">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        <span>SMS / Notifications</span>
+    </a>
+
+    <!-- Bottom pinned settings/logout -->
+    <div class="nav-footer">
+        <a href="#" class="nav-item">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>Settings</span>
+        </a>
+        <a href="#" id="logoutBtn" class="nav-item">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <span>Log out</span>
+        </a>
+    </div>
+</nav>
+        </aside>
+
+        <!-- 2. Right Canvas Area will go here -->
+        <main class="main-wrapper">
+          <!-- 1. Top Header Toolbar -->
+<header class="dashboard-header">
+    <div class="header-titles">
+        <h1 class="welcome-heading">Good evening, Maria</h1>
+        <span class="sub-header-details" id="totalCasesSubtext"></span>
+    </div>
+    <div class="header-actions">
+       <span class="current-date" id="liveClockDisplay">Loading date...</span>
+        <button class="btn-encode-case">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Encode Case</span>
+        </button>
+        <div class="notification-wrapper" style="position: relative; display: inline-block;">
+    <button class="notification-bell" id="bellBtn" type="button" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <span class="bell-dot" id="bellDot" style="display: none;"></span>
+    </button>
+
+        <!-- Notification Dropdown Menu Popover -->
+    <div class="notification-dropdown" id="notificationDropdown" style="display: none; position: absolute; right: 0; top: 48px; width: 330px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12); z-index: 1000; padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <strong style="font-size: 0.88rem; color: #0f172a;">Action Reminders</strong>
+                <span id="notifBadgeSummary" style="font-size: 0.72rem; background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 9999px; font-weight: 700;">0 New</span>
+            </div>
+            <span style="font-size: 0.75rem; color: #64748b;">Live Alerts</span>
+        </div>
+        <div id="notificationList" style="max-height: 270px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+            <p style="font-size: 0.8rem; color: #94a3b8; text-align: center; margin: 16px 0;">No pending reminders</p>
+        </div>
+     </div>
+    </div>
+</header>
+
+<!-- 2. Urgent Emergency Banner (Hidden by default until a critical case is encoded) -->
+<section class="alert-banner" id="urgentBanner" style="display: none;">
+    <div class="alert-content">
+        <div class="alert-icon"></div>
+        <div class="alert-text">
+            <h3 id="urgentBannerTitle">0 critical cases require immediate attention</h3>
+            <p>Click to view and assign officers</p>
+        </div>
+    </div>
+    <a href="#" class="alert-action-link">View &rarr;</a>
+</section>
+
+<!-- 3. Five Status Metric Cards -->
+<section class="status-grid">
+    <div class="status-card border-pending">
+        <div class="status-label"><span class="dot dot-pending"></span><span>Pending</span></div>
+        <div class="status-count" id="countPending">-</div>
+        <a href="#" class="status-link">cases &rarr;</a>
+    </div>
+
+    <div class="status-card border-progress">
+        <div class="status-label"><span class="dot dot-progress"></span><span>In Progress</span></div>
+        <div class="status-count count-progress" id="countProgress">-</div>
+        <a href="#" class="status-link">cases &rarr;</a>
+    </div>
+
+    <div class="status-card border-resolution">
+        <div class="status-label"><span class="dot dot-resolution"></span><span>For Resolution</span></div>
+        <div class="status-count count-resolution" id="countResolution">-</div>
+        <a href="#" class="status-link">cases &rarr;</a>
+    </div>
+
+    <div class="status-card border-resolved">
+        <div class="status-label"><span class="dot dot-resolved"></span><span>Resolved</span></div>
+        <div class="status-count count-resolved" id="countResolved">-</div>
+        <a href="#" class="status-link">cases &rarr;</a>
+    </div>
+
+    <div class="status-card border-critical">
+        <div class="status-label"><span class="dot dot-critical"></span><span>Critical / Urgent</span></div>
+        <div class="status-count count-critical" id="countCritical">-</div>
+        <a href="#" class="status-link">cases &rarr;</a>
+    </div>
+</section>
+
+<!-- 4. Split Row 1: Recent Cases & Recent Activity -->
+<section class="grid-split-row">
+    <!-- Left Panel: Recent Cases (Case Inventory Module) -->
+    <div class="card-panel">
+        <div class="panel-header">
+            <h2>Recent Cases</h2>
+            <a href="#" class="panel-link">View all &rarr;</a>
+        </div>
+        <div class="case-list" id="caseListContainer">
+            <div class="empty-state-box">
+                <p>No encoded cases yet.</p>
+                <span>Cases submitted via walk-in, portal, or emergency intake will appear here.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Panel: Recent Activity (Personnel Accountability / Audit) -->
+    <div class="card-panel">
+        <div class="panel-header">
+            <h2>Recent Activity</h2>
+        </div>
+        <div class="activity-timeline" id="activityTimelineContainer">
+            <div class="empty-state-box">
+                <p>No recent activity.</p>
+                <span>Dispatch logs, notifications, and status updates will be tracked here.</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 5. Split Row 2: Incident Trend & Quick Actions -->
+<section class="grid-split-row bottom-row">
+    <!-- Left Panel: Incident Trend (Report Module / Hotspot Detection) -->
+    <div class="card-panel">
+        <div class="panel-header">
+            <h2>Incident Trend</h2>
+            <span class="panel-subtext">Last 6 months</span>
+        </div>
+        <div class="chart-container">
+            <canvas id="incidentTrendChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Right Panel: Quick Actions -->
+    <div class="card-panel">
+        <div class="panel-header">
+            <h2>Quick Actions</h2>
+        </div>
+        <div class="quick-action-list">
+            <button class="qa-btn qa-dark" id="btnQuickEncode">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Encode New Case</span>
+            </button>
+            <button class="qa-btn qa-red" id="btnQuickUrgent">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
+                <span>View Urgent Cases</span>
+            </button>
+            <button class="qa-btn qa-amber" id="btnQuickAlert">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                <span>Send Alert</span>
+            </button>
+            <button class="qa-btn qa-blue" id="btnQuickAnalytics">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                <span>View Analytics</span>
+            </button>
+        </div>
+    </div>
+</section>
+
+</main>
+    </div>
+
+   <!-- ENCODE CASE MODAL (Case Inventory Module) -->
+<div class="modal-overlay" id="encodeModal" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <div>
+                <h3 class="modal-title">Encode New Incident Report</h3>
+                <span class="modal-subtitle">Scenario 1: Officer-Assisted Walk-In Intake</span>
+            </div>
+            <button type="button" class="modal-close" id="btnCloseModal">&times;</button>
+        </div>
+
+        <form id="encodeCaseForm" class="modal-form">
+            <!-- Complainant Details -->
+            <div class="form-section-title">Complainant / Reporter Info</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="complainantName">Full Name *</label>
+                    <input type="text" id="complainantName" required placeholder="e.g., Ligaya Bautista">
+                </div>
+                <div class="form-group">
+                    <label for="complainantPhone">Contact Number *</label>
+                    <input type="tel" id="complainantPhone" required placeholder="09xxxxxxxxx">
+                </div>
+            </div>
+
+            <!-- Location Details -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="purokSelect">Purok / Zone *</label>
+                    <select id="purokSelect" required>
+                        <option value="">Select Purok</option>
+                        <option value="Sitio Masaya">Sitio Masaya</option>
+                        <option value="Purok 1">Purok 1</option>
+                        <option value="Purok 2">Purok 2</option>
+                        <option value="Purok 3">Purok 3</option>
+                        <option value="Purok 4">Purok 4</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="streetAddress">Street / House No.</label>
+                    <input type="text" id="streetAddress" placeholder="e.g., 124 Rizal St.">
+                </div>
+            </div>
+
+        
+            <!-- Incident Details -->
+            <div class="form-section-title">Incident Details</div>
+            <div class="form-group">
+                <label for="incidentTitle">Incident Summary / Title *</label>
+                <input type="text" id="incidentTitle" required placeholder="e.g., Loud Music Disturbance at Sitio Masaya">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="incidentCategory">Category *</label>
+                    <select id="incidentCategory" required>
+                        <option value="">Select Category</option>
+                        <option value="Noise Disturbance">Noise Disturbance</option>
+                        <option value="Property Dispute">Property Dispute</option>
+                        <option value="Theft">Theft</option>
+                        <option value="Physical Altercation">Physical Altercation</option>
+                        <option value="Illegal Dumping">Illegal Dumping</option>
+                        <option value="Others">Others</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="priorityLevel">Initial Priority (AI / Officer) *</label>
+                    <select id="priorityLevel" required>
+                        <option value="Low">Low</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="High">High</option>
+                        <option value="Critical">Critical / Urgent</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="incidentNarrative">Incident Narrative / Blotter Notes *</label>
+                <textarea id="incidentNarrative" rows="" required placeholder="Provide clear description of the incident..."></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" id="btnCancelModal">Cancel</button>
+                <button type="submit" class="btn-submit" id="btnSubmitCase">Encode & File Case</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+    <!-- DECISION SUPPORT / AI SUGGEST MODAL -->
+<div class="modal-overlay" id="suggestModal" style="display: none;">
+    <div class="modal-container" style="max-width: 500px;">
+        <div class="modal-header">
+            <div>
+                <h3 class="modal-title">AI Protocol Suggestion</h3>
+                <span class="modal-subtitle" id="suggestCaseRef">Case Reference</span>
+            </div>
+            <button class="modal-close" id="btnCloseSuggestModal">&times;</button>
+        </div>
+
+        <div class="modal-form" style="gap: 16px;">
+            <div class="suggest-box">
+                <div class="suggest-header">
+                    <span class="suggest-badge" id="suggestClassification">EVALUATING</span>
+                    <span class="suggest-priority" id="suggestPriority">Priority: High</span>
+                </div>
+                <p id="suggestRecommendation" class="suggest-text">Loading protocol recommendations...</p>
+            </div>
+
+            <div class="sop-checklist">
+                <span class="form-section-title">Recommended Next Steps (SOP)</span>
+                <ul class="sop-list" id="sopList">
+                    
+                </ul>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" id="btnDismissSuggest">Dismiss</button>
+                <button type="button" class="btn-submit" id="btnApplyAction">Execute Action</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Link Dashboard JS logic -->
+    <script src="dashboard.js"></script>
+</body>
+</html>
