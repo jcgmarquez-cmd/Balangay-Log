@@ -1,101 +1,203 @@
 <?php
-// Suppress raw HTML errors to keep JSON output valid
+// Display errors immediately to debug issues
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-ini_set('display_errors', 0);
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-$conn = new mysqli("127.0.0.1", "root", "", "balangaylog_db", 3306);
+// Convert MySQLi errors into catchable exceptions
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $conn->connect_error]);
+try {
+    $conn = new mysqli("127.0.0.1", "root", "", "balangaylog_db", 3306);
+    $conn->set_charset("utf8mb4");
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Database connection failed: ' . $e->getMessage()
+    ]);
     exit();
 }
 
-$input = json_decode(file_get_contents('php://input'), true) ?? [];
+$input = json_decode(file_get_contents('php://input'), true);
 
-// Direct assignment with safe defaults
-$name        = !empty(trim($input['complainantName'] ?? '')) ? trim($input['complainantName']) : 'Walk-In Resident';
-$phone       = !empty(trim($input['complainantPhone'] ?? '')) ? trim($input['complainantPhone']) : '09000000000';
-$purok       = !empty(trim($input['purok'] ?? '')) ? trim($input['purok']) : 'Sitio Masaya';
-$street      = trim($input['streetAddress'] ?? '');
-$type        = !empty(trim($input['incidentCategory'] ?? ($input['category'] ?? ''))) ? trim($input['incidentCategory'] ?? $input['category']) : 'General Incident';
-$title       = !empty(trim($input['incidentTitle'] ?? '')) ? trim($input['incidentTitle']) : 'Incident Blotter Entry';
-$narrative   = !empty(trim($input['incidentNarrative'] ?? ($input['narrative'] ?? ''))) ? trim($input['incidentNarrative'] ?? $input['narrative']) : 'No blotter notes provided.';
-$userPriority= trim($input['priorityLevel'] ?? ($input['priority'] ?? 'Medium'));
+if (!$input) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Invalid or missing JSON payload.']);
+    exit();
+}
 
-$lat         = floatval($input['lat'] ?? 14.545300);
-$lng         = floatval($input['lng'] ?? 120.573900);
+// -------------------------------------------------------------
+// STRICT FIELD EXTRACTION & SANITIZATION
+// -------------------------------------------------------------
+$name      = trim($input['complainantName'] ?? '');
+$phone     = trim($input['complainantPhone'] ?? '');
+$purok     = trim($input['purok'] ?? '');
+$street    = trim($input['streetAddress'] ?? '');
+$type      = trim($input['incidentCategory'] ?? ($input['category'] ?? ''));
+$title     = trim($input['incidentTitle'] ?? '');
+$narrative = trim($input['incidentNarrative'] ?? ($input['narrative'] ?? ''));
+
+// Priority & Audit Payload
+$userPriority          = trim($input['priorityLevel'] ?? ($input['priority'] ?? ''));
+$aiDetectedPriority    = trim($input['aiDetectedPriority'] ?? 'Low');
+$isPriorityOverridden  = !empty($input['isPriorityOverridden']) ? 1 : 0;
+$overrideJustification = !empty($input['overrideJustification']) ? trim($input['overrideJustification']) : null;
+
+// -------------------------------------------------------------
+// INPUT INTEGRITY & VALIDATION GATES
+// -------------------------------------------------------------
+if (empty($name) || strlen($name) < 3) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'A valid complainant name is required (minimum 3 characters).']);
+    exit();
+}
+
+if (!preg_match('/^09\d{9}$/', $phone)) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'A valid 11-digit Philippine contact number (09XXXXXXXXX) is required.']);
+    exit();
+}
+
+if (empty($purok) || $purok === 'Select Purok') {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Please select a valid Purok / Zone.']);
+    exit();
+}
+
+if (empty($type) || $type === 'General Incident') {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Please select a valid incident category.']);
+    exit();
+}
+
+if (empty($title) || strlen($title) < 5) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Incident title must be descriptive (at least 5 characters).']);
+    exit();
+}
+
+if (empty($narrative) || strlen($narrative) < 20) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Narrative description must provide substantial detail (at least 20 characters).']);
+    exit();
+}
+
+$validPriorities = ['Low', 'High', 'Critical'];
+if (!in_array($userPriority, $validPriorities)) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Invalid priority level specified.']);
+    exit();
+}
+
+// Ensure justified downgrade audit check
+if ($isPriorityOverridden && empty($overrideJustification)) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Priority override requires a valid justification.']);
+    exit();
+}
+
+// -------------------------------------------------------------
+// GEO-COORDINATES & SCORING
+// -------------------------------------------------------------
+$lat = floatval($input['lat'] ?? 14.545300);
+$lng = floatval($input['lng'] ?? 120.573900);
 if ($lat == 0.0) $lat = 14.545300;
 if ($lng == 0.0) $lng = 120.573900;
 
-// Base priority set from user input
-$priority = in_array($userPriority, ['Low', 'Moderate', 'Medium', 'High', 'Critical']) ? $userPriority : 'Medium';
-if ($priority === 'Medium') $priority = 'Moderate'; // Normalize to enum if needed
+$finalPriority = $userPriority;
 
-// Heuristic keyword analysis
-$criticalKeywords = ['weapon', 'gun', 'baril', 'knife', 'patalim', 'dugo', 'bleeding', 'stab', 'sinaksak', 'hostage', 'sunog', 'fire', 'holdap'];
-$highKeywords     = ['sapakan', 'suntukan', 'altercation', 'nakawan', 'theft', 'nakaw'];
-
-$textToAnalyze = strtolower($title . ' ' . $narrative);
-
-$urgencyScore = 20.00;
-$recommendation = 'Standard administrative intake. Log for regular review.';
-
-// Escalate ONLY if explicit life-safety keywords are detected in the actual narrative/title
-$hasCriticalWord = false;
-foreach ($criticalKeywords as $kw) {
-    if (strpos($textToAnalyze, $kw) !== false) {
-        $hasCriticalWord = true;
-        break;
-    }
-}
-
-if ($hasCriticalWord || $userPriority === 'Critical') {
+if ($finalPriority === 'Critical') {
     $urgencyScore = 85.00;
-    $priority = 'Critical';
     $recommendation = 'Critical threat detected. Dispatch Immediate Response Unit and alert PNP.';
-} elseif ($userPriority === 'High') {
+} elseif ($finalPriority === 'High') {
     $urgencyScore = 65.00;
-    $priority = 'High';
-    $recommendation = 'Active altercation. Deploy 2 field Tanods for on-site pacification.';
-} elseif ($userPriority === 'Low') {
-    $urgencyScore = 20.00;
-    $priority = 'Low';
-    $recommendation = 'Standard administrative intake. Log for regular review.';
+    $recommendation = 'Active incident. Deploy Barangay Tanod unit for on-site verification.';
 } else {
-    $urgencyScore = 40.00;
-    $priority = 'Moderate';
-    $recommendation = 'Eligible for Katarungang Pambarangay. Issue notice to summon for Lupon mediation.';
+    $urgencyScore = 20.00;
+    $recommendation = 'Standard administrative intake. Log for regular review.';
 }
 
-// Generate Reference ID
+// -------------------------------------------------------------
+// TRACKING REFERENCE & INSERT PREPARATION
+// -------------------------------------------------------------
 $year = date('Y');
 $countRes = $conn->query("SELECT COUNT(*) as total FROM incident_reports");
 $rowCount = ($countRes) ? ($countRes->fetch_assoc()['total'] + 1) : 1;
 $trackingId = sprintf("TRK-%s-%03d", $year, $rowCount);
 
-// Set Status based on the real priority
-$initialStatus = ($priority === 'Critical') ? 'CRITICAL' : 'PENDING';
+$initialStatus = ($finalPriority === 'Critical') ? 'CRITICAL' : 'PENDING';
 $dt = date('Y-m-d H:i:s');
 
+// Prepared INSERT statement with 16 dynamic placeholders
 $stmt = $conn->prepare("INSERT INTO incident_reports 
-    (reference_number, complainant_name, complainant_phone, incident_type, narrative_description, incident_datetime, purok, latitude, longitude, verification_level, ai_urgency_score, priority_level, ai_recommendation, status) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'VERIFIED', ?, ?, ?, ?)");
+    (reference_number, complainant_name, complainant_phone, incident_type, narrative_description, incident_datetime, purok, latitude, longitude, verification_level, ai_urgency_score, priority_level, ai_detected_priority, is_priority_overridden, override_justification, ai_recommendation, status) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'VERIFIED', ?, ?, ?, ?, ?, ?, ?)");
 
-$stmt->bind_param("sssssssdddsss", $trackingId, $name, $phone, $type, $narrative, $dt, $purok, $lat, $lng, $urgencyScore, $priority, $recommendation, $initialStatus);
+if (!$stmt) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Prepare failed: ' . $conn->error]);
+    exit();
+}
+
+// Exactly 16 type specifiers matching the 16 parameters below:
+// s (1: reference_number)
+// s (2: complainant_name)
+// s (3: complainant_phone)
+// s (4: incident_type)
+// s (5: narrative_description)
+// s (6: incident_datetime)
+// s (7: purok)
+// d (8: latitude)
+// d (9: longitude)
+// d (10: ai_urgency_score)
+// s (11: priority_level)
+// s (12: ai_detected_priority)
+// i (13: is_priority_overridden)
+// s (14: override_justification)
+// s (15: ai_recommendation)
+// s (16: status)
+$typeDefinition = "sssssssdddssisss";
+
+$stmt->bind_param(
+    $typeDefinition, 
+    $trackingId, 
+    $name, 
+    $phone, 
+    $type, 
+    $narrative, 
+    $dt, 
+    $purok, 
+    $lat, 
+    $lng, 
+    $urgencyScore, 
+    $finalPriority, 
+    $aiDetectedPriority, 
+    $isPriorityOverridden, 
+    $overrideJustification, 
+    $recommendation, 
+    $initialStatus
+);
 
 if ($stmt->execute()) {
     $newIncidentId = $stmt->insert_id;
 
-    $actionNote = "Initial report logged as {$type}. Priority: {$priority} (Score: {$urgencyScore}).";
+    $actionNote = "Initial report logged as {$type}. Priority: {$finalPriority} (Score: {$urgencyScore}).";
+    if ($isPriorityOverridden) {
+        $actionNote .= " [AI Downgraded: {$aiDetectedPriority} -> {$finalPriority} | Reason: {$overrideJustification}]";
+    }
+
     $stmtM = $conn->prepare("INSERT INTO case_milestones (incident_id, tracking_id, status_snapshot, action_note) VALUES (?, ?, ?, ?)");
-    $stmtM->bind_param("isss", $newIncidentId, $trackingId, $initialStatus, $actionNote);
-    $stmtM->execute();
-    $stmtM->close();
+    if ($stmtM) {
+        $stmtM->bind_param("isss", $newIncidentId, $trackingId, $initialStatus, $actionNote);
+        $stmtM->execute();
+        $stmtM->close();
+    }
 
     echo json_encode([
         'success' => true,
@@ -105,13 +207,14 @@ if ($stmt->execute()) {
             'title'            => $title,
             'complainant'      => $name,
             'category'         => $type,
-            'priority'         => $priority,
+            'priority'         => $finalPriority,
             'status'           => $initialStatus,
             'urgency_score'    => $urgencyScore,
             'recommendation'   => $recommendation
         ]
     ]);
 } else {
+    http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database insert error: ' . $stmt->error]);
 }
 

@@ -1,36 +1,39 @@
-document.addEventListener('DOMContentLoaded', () => {
+// ==========================================
+// AI TRIAGE & OVERRIDE AUDIT STATE
+// ==========================================
+window.currentAiSuggested = 'Low';
+window.savedOverrideJustification = '';
+let pendingPriorityChange = '';
 
- // ==========================================
+
+// ==========================================
 // 0. TOP-LEVEL AUTH & HISTORY TRAP
 // Must run OUTSIDE DOMContentLoaded for bfcache support
 // ==========================================
 (function enforceAuthAndHistory() {
-    const token = localStorage.getItem('authToken');
-    const user = localStorage.getItem('currentUser');
+    const token = sessionStorage.getItem('authToken');
+    const user = sessionStorage.getItem('currentUser');
 
-    // Immediate kick out if not logged in
-    if (!token || !user) {
+    if (!token || !user || token === 'undefined' || user === 'undefined' || token === 'null' || user === 'null') {
         window.location.replace('index.html');
         return;
     }
 
-    // Push duplicate history state to neutralize Back button
     history.pushState(null, '', location.href);
     window.addEventListener('popstate', function () {
         history.pushState(null, '', location.href);
     });
 
-    // Catch Back/Forward cache restores
     window.addEventListener('pageshow', function (event) {
-        const activeToken = localStorage.getItem('authToken');
-        const activeUser = localStorage.getItem('currentUser');
-        if (!activeToken || !activeUser) {
+        const activeToken = sessionStorage.getItem('authToken');
+        const activeUser = sessionStorage.getItem('currentUser');
+        if (!activeToken || !activeUser || activeToken === 'undefined' || activeUser === 'undefined' || activeToken === 'null' || activeUser === 'null') {
             window.location.replace('index.html');
         }
     });
-    // 3. Kick out immediately if another tab logs out or storage is cleared
-    window.addEventListener('storage', function (event) {
-        if (!localStorage.getItem('authToken') || !localStorage.getItem('currentUser')) {
+
+    window.addEventListener('storage', function () {
+        if (!sessionStorage.getItem('authToken') || !sessionStorage.getItem('currentUser')) {
             window.location.replace('index.html');
         }
     });
@@ -63,12 +66,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     updateClock();
     setInterval(updateClock, 1000);
-})
 
     // ==========================================
     // 2. LEAFLET MAP INITIALIZATION
     // ==========================================
-   
     let mapInstance = null;
     let markerInstance = null;
 
@@ -79,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mapContainer = document.getElementById('incidentMapPicker');
         if (!mapContainer) return;
 
-        if (!mapInstance) {
+        if (!mapInstance && typeof L !== 'undefined') {
             mapInstance = L.map('incidentMapPicker').setView([defaultLat, defaultLng], 15);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
@@ -123,12 +124,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function openModal() {
         if (encodeModal) {
             encodeModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // Locks dashboard background scroll
             initLeafletPicker();
         }
     }
 
     function closeModal() {
-        if (encodeModal) encodeModal.style.display = 'none';
+        if (encodeModal) {
+            encodeModal.style.display = 'none';
+            document.body.style.overflow = ''; // Unlocks dashboard background scroll
+        }
     }
 
     if (btnOpenEncode) btnOpenEncode.addEventListener('click', (e) => { e.preventDefault(); openModal(); });
@@ -136,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnCloseModal) btnCloseModal.addEventListener('click', closeModal);
     if (btnCancelModal) btnCancelModal.addEventListener('click', closeModal);
 
-    // ==========================================
+// ==========================================
     // 4. ENCODE FORM DIRECT SUBMISSION
     // ==========================================
     const encodeForm = document.getElementById('encodeCaseForm');
@@ -147,25 +152,113 @@ document.addEventListener('DOMContentLoaded', () => {
     const activityTimelineContainer = document.getElementById('activityTimelineContainer');
     const urgentBanner = document.getElementById('urgentBanner');
 
-    if (encodeForm) {
+   if (encodeForm) {
         encodeForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            // 1. Extract and sanitize field values
+            const nameVal           = document.getElementById('complainantName')?.value.trim() || '';
+            const phoneVal          = document.getElementById('complainantPhone')?.value.trim() || '';
+            const purokVal          = document.getElementById('purokSelect')?.value || '';
+            const houseVal          = document.getElementById('houseNumber')?.value.trim() || '';
+            const streetVal         = document.getElementById('streetAddress')?.value.trim() || '';
+            const categoryVal       = document.getElementById('incidentCategory')?.value || '';
+            const titleVal          = document.getElementById('incidentTitle')?.value.trim() || '';
+            const narrativeVal      = document.getElementById('incidentNarrative')?.value.trim() || '';
+
+            // 2. Client-side input validation checks
+            if (!nameVal || nameVal.length < 3) {
+                alert('Please enter a valid Complainant Full Name (at least 3 characters).');
+                document.getElementById('complainantName')?.focus();
+                return;
+            }
+
+            if (!/^09\d{9}$/.test(phoneVal)) {
+                alert('Please enter a valid 11-digit Philippine mobile number starting with 09 (e.g., 09171234567).');
+                document.getElementById('complainantPhone')?.focus();
+                return;
+            }
+
+            if (!purokVal || purokVal === 'Select Purok') {
+                alert('Please select a valid Purok / Zone from the dropdown.');
+                document.getElementById('purokSelect')?.focus();
+                return;
+            }
+
+            if (!houseVal) {
+                alert('Please enter the House / Building Number.');
+                document.getElementById('houseNumber')?.focus();
+                return;
+            }
+
+            if (!streetVal) {
+                alert('Please enter the Street Name.');
+                document.getElementById('streetAddress')?.focus();
+                return;
+            }
+
+            if (!categoryVal || categoryVal === 'General Incident') {
+                alert('Please select an Incident Category.');
+                document.getElementById('incidentCategory')?.focus();
+                return;
+            }
+
+            if (!titleVal || titleVal.length < 5) {
+                alert('Please provide a descriptive Incident Summary / Title (minimum 5 characters).');
+                document.getElementById('incidentTitle')?.focus();
+                return;
+            }
+
+            if (!narrativeVal || narrativeVal.length < 20) {
+                alert('Please enter substantial blotter notes / narrative (minimum 20 characters).');
+                document.getElementById('incidentNarrative')?.focus();
+                return;
+            }
+
+            // Combine addresses and coordinates
+            const fullAddress = `${houseVal} ${streetVal}`.trim();
             const latVal = parseFloat(document.getElementById('incidentLat')?.value) || 14.545300;
             const lngVal = parseFloat(document.getElementById('incidentLng')?.value) || 120.573900;
 
+            // --- OVERRIDE EXTRACTION ---
+            const priorityVal = document.getElementById('priorityLevel')?.value || 'Low';
+            const aiSuggested = window.currentAiSuggested || 'Low';
+            const isOverridden = (aiSuggested === 'Critical' && priorityVal !== 'Critical') ? 1 : 0;
+            const finalJustification = window.savedOverrideJustification || '';
+
+            // Guard: Require justification if downgraded from Critical
+            if (isOverridden && !finalJustification.trim()) {
+                alert('Officer justification is required when downgrading a Critical incident.');
+                const downgradeModal = document.getElementById('downgradeModal');
+                const targetLabel = document.getElementById('targetPriorityLabel');
+                if (targetLabel) targetLabel.innerText = priorityVal;
+                if (downgradeModal) downgradeModal.style.display = 'flex';
+                return;
+            }
+
+            // 3. Assemble clean payload without fallbacks
             const payload = {
-                complainantName: document.getElementById('complainantName')?.value || 'Walk-In Resident',
-                complainantPhone: document.getElementById('complainantPhone')?.value || '09000000000',
-                purok: document.getElementById('purokSelect')?.value || 'Sitio Masaya',
-                streetAddress: document.getElementById('streetAddress')?.value || '',
-                incidentTitle: document.getElementById('incidentTitle')?.value || 'New Incident Report',
-                incidentCategory: document.getElementById('incidentCategory')?.value || 'General Incident',
-                priorityLevel: document.getElementById('priorityLevel')?.value || 'Medium',
-                incidentNarrative: document.getElementById('incidentNarrative')?.value || 'Blotter intake notes logged.',
+                complainantName: nameVal,
+                complainantPhone: phoneVal,
+                purok: purokVal,
+                streetAddress: fullAddress,
+                incidentTitle: titleVal,
+                incidentCategory: categoryVal,
+                priorityLevel: priorityVal,
+                aiDetectedPriority: aiSuggested,
+                isPriorityOverridden: isOverridden,
+                overrideJustification: isOverridden ? finalJustification : null,
+                incidentNarrative: narrativeVal,
                 lat: latVal,
                 lng: lngVal
             };
+
+            // 4. UI Submission feedback
+            const btnSubmit = document.getElementById('btnSubmitCase') || encodeForm.querySelector('button[type="submit"]');
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerText = 'Filing Report...';
+            }
 
             try {
                 const response = await fetch('api/encode_case.php', {
@@ -211,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="case-tags">
                                     <span class="badge badge-${priorityClass}">${item.priority}</span>
                                     <span class="pill pill-pending">Pending</span>
-                                    <button class="btn-suggest"> Suggest</button>
+                                    <button class="btn-suggest">💡 Suggest</button>
                                 </div>
                             </div>
                         `;
@@ -236,19 +329,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     encodeForm.reset();
+                    window.currentAiSuggested = 'Low';
+                    window.savedOverrideJustification = '';
+                    const triageHint = document.getElementById('aiTriageHint');
+                    if (triageHint) triageHint.innerText = '';
                     closeModal();
-                    loadDashboardData();
-                    fetchNotifications();
+                    
+                    if (typeof loadDashboardData === 'function') loadDashboardData();
+                    if (typeof fetchNotifications === 'function') fetchNotifications();
                 } else {
                     alert('Error: ' + result.message);
                 }
             } catch (err) {
                 console.error('Fetch Error:', err);
                 alert('Could not connect to server: ' + err.message);
+            } finally {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerText = 'Encode & File Case';
+                }
             }
         });
     }
 
+   
     // ==========================================
     // 5. AI SUGGEST ENGINE & ACTION EXECUTION
     // ==========================================
@@ -406,7 +510,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebarUrgentBadge = document.getElementById('sidebarUrgentBadge');
     const sidebarSpamBadge = document.getElementById('sidebarSpamBadge');
 
-    // Toggle dropdown
     if (bellBtn && notificationDropdown) {
         bellBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -414,7 +517,6 @@ document.addEventListener('DOMContentLoaded', () => {
             notificationDropdown.style.display = isVisible ? 'none' : 'block';
         });
 
-        // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
             if (!notificationDropdown.contains(e.target) && e.target !== bellBtn) {
                 notificationDropdown.style.display = 'none';
@@ -430,7 +532,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const counts = data.counts;
 
-            // 1. Update the notification bell badge count
             if (bellDot) {
                 if (counts.total > 0) {
                     bellDot.innerText = counts.total;
@@ -444,7 +545,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 notifBadgeSummary.innerText = `${counts.total} Total`;
             }
 
-            // 2. Sync Left Sidebar Badges
             if (sidebarUrgentBadge) {
                 const urgentTotal = counts.critical + counts.high;
                 sidebarUrgentBadge.innerText = urgentTotal;
@@ -455,7 +555,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 sidebarSpamBadge.style.display = counts.spam > 0 ? 'inline-block' : 'none';
             }
 
-            // 3. Render popup list with explicit labels & routing
             if (notificationList) {
                 if (!data.notifications || data.notifications.length === 0) {
                     notificationList.innerHTML = `
@@ -504,7 +603,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         row.style.transform = 'none';
                     });
 
-                    // Navigation routing on click
                     row.addEventListener('click', () => {
                         notificationDropdown.style.display = 'none';
                         window.location.href = item.target_url;
@@ -536,12 +634,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // 6. SESSION, USER PROFILE & LOGOUT
     // ==========================================
     try {
-        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-        const authToken = localStorage.getItem('authToken');
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        const authToken = sessionStorage.getItem('authToken');
 
-        // If not logged in, redirect to login page immediately
         if (!currentUser || !authToken) {
-            window.location.href = 'index.html';
+            window.location.replace('index.html');
             return;
         }
 
@@ -553,7 +650,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const fullName = currentUser.full_name || currentUser.username || 'User';
         const role = (currentUser.role || 'OFFICER').toUpperCase();
 
-        // 1. Update Sidebar
         if (nameDisplay) nameDisplay.innerText = fullName;
         if (roleDisplay) {
             roleDisplay.innerText = role.charAt(0) + role.slice(1).toLowerCase();
@@ -569,7 +665,6 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar.innerText = initials || 'BL';
         }
 
-        // 2. Dynamic Time-of-Day Greeting
         if (welcomeHeading) {
             const currentHour = new Date().getHours();
             let greeting = 'Good evening';
@@ -578,7 +673,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (currentHour >= 12 && currentHour < 18) {
                 greeting = 'Good afternoon';
             }
-            // Display greeting with first name
             const firstName = fullName.split(' ')[0] || 'Official';
             welcomeHeading.innerText = `${greeting}, ${firstName}`;
         }
@@ -587,15 +681,16 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('Session parse error:', e);
     }
 
-const logoutBtn = document.getElementById('logoutBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            localStorage.clear();
             sessionStorage.clear();
+            localStorage.clear();
             window.location.replace('index.html');
         });
     }
+
     // ==========================================
     // 7. INCIDENT TREND CHART
     // ==========================================
@@ -709,5 +804,159 @@ const logoutBtn = document.getElementById('logoutBtn');
         }
     }
 
+   // ==========================================
+    // 9. LIVE AI TRIAGE + POP-UP DOWNGRADE ENGINE
+    // ==========================================
+    const TRIAGE_DICTIONARY = {
+        critical: {
+            weight: 60,
+            words: [
+                'baril', 'gun', 'saksak', 'knife', 'itak', 'patay', 'dugo', 
+                'bleeding', 'sunog', 'fire', 'hostage', 'sinaksak', 'babarilin', 
+                'emergency', 'hinimatay', 'unconscious', 'posible mamatay', 'tinaga'
+            ]
+        },
+        high: {
+            weight: 25,
+            words: [
+                'suntukan', 'away', 'buntalan', 'sinaktan', 'pulis', 'nakaw', 
+                'holdap', 'theft', 'threat', 'banta', 'harass', 'trespassing', 
+                'alitan', 'sapukan', 'pananakit', 'eskandalo', 'nanakit'
+            ]
+        },
+        low: {
+            words: [
+                'ingay', 'videoke', 'karaoke', 'tahol', 'aso', 'basura', 
+                'harang', 'parking', 'tsismis', 'utang', 'chismis'
+            ]
+        }
+    };
+
+    function setupLiveTriage() {
+        const narrativeInput = document.getElementById('incidentNarrative');
+        const categorySelect = document.getElementById('incidentCategory');
+        const prioritySelect = document.getElementById('priorityLevel');
+        const triageHint = document.getElementById('aiTriageHint');
+
+        const downgradeModal = document.getElementById('downgradeModal');
+        const targetPriorityLabel = document.getElementById('targetPriorityLabel');
+        const popupReasonSelect = document.getElementById('popupOverrideReason');
+        const popupCustomGroup = document.getElementById('popupCustomReasonGroup');
+        const popupCustomText = document.getElementById('popupCustomReasonText');
+        const btnConfirmDowngrade = document.getElementById('btnConfirmDowngrade');
+        const btnCancelDowngrade = document.getElementById('btnCancelDowngrade');
+
+        if (!narrativeInput || !prioritySelect) return;
+
+        let triageDebounce;
+
+        // 1. Evaluate narrative text as officer types
+        const evaluateTriage = () => {
+            const combinedText = (narrativeInput.value + ' ' + (categorySelect?.value || '')).toLowerCase();
+
+            if (narrativeInput.value.trim().length < 3) {
+                if (triageHint) triageHint.innerText = '';
+                window.currentAiSuggested = 'Low';
+                return;
+            }
+
+            let score = 0;
+            let matchedKeywords = [];
+
+            TRIAGE_DICTIONARY.critical.words.forEach(w => {
+                if (combinedText.includes(w)) {
+                    score += TRIAGE_DICTIONARY.critical.weight;
+                    matchedKeywords.push(w);
+                }
+            });
+
+            TRIAGE_DICTIONARY.high.words.forEach(w => {
+                if (combinedText.includes(w)) {
+                    score += TRIAGE_DICTIONARY.high.weight;
+                    matchedKeywords.push(w);
+                }
+            });
+
+            if (categorySelect?.value === 'Physical Altercation') score += 25;
+            if (categorySelect?.value === 'Theft') score += 20;
+
+            let suggested = 'Low';
+            if (score >= 50) suggested = 'Critical';
+            else if (score >= 20) suggested = 'High';
+
+            window.currentAiSuggested = suggested;
+            prioritySelect.value = suggested;
+
+            if (triageHint) {
+                if (matchedKeywords.length > 0) {
+                    triageHint.innerHTML = `⚡ AI Detected: <strong>${suggested}</strong> (${matchedKeywords.slice(0, 3).join(', ')})`;
+                } else {
+                    triageHint.innerHTML = `⚡ AI Suggested: <strong>${suggested}</strong>`;
+                }
+            }
+        };
+
+        narrativeInput.addEventListener('input', () => {
+            clearTimeout(triageDebounce);
+            triageDebounce = setTimeout(evaluateTriage, 200);
+        });
+
+        if (categorySelect) {
+            categorySelect.addEventListener('change', evaluateTriage);
+        }
+
+        // 2. Intercept Manual Priority Downgrades
+        prioritySelect.addEventListener('change', () => {
+            const chosen = prioritySelect.value;
+
+            if (window.currentAiSuggested === 'Critical' && chosen !== 'Critical') {
+                pendingPriorityChange = chosen;
+                if (targetPriorityLabel) targetPriorityLabel.innerText = chosen;
+
+                if (popupReasonSelect) popupReasonSelect.value = '';
+                if (popupCustomText) popupCustomText.value = '';
+                if (popupCustomGroup) popupCustomGroup.style.display = 'none';
+
+                if (downgradeModal) downgradeModal.style.display = 'flex';
+            } else {
+                window.savedOverrideJustification = '';
+            }
+        });
+
+        // 3. Downgrade Modal Button Controls
+        if (popupReasonSelect && popupCustomGroup) {
+            popupReasonSelect.addEventListener('change', () => {
+                popupCustomGroup.style.display = popupReasonSelect.value === 'Other' ? 'block' : 'none';
+            });
+        }
+
+        if (btnCancelDowngrade) {
+            btnCancelDowngrade.addEventListener('click', () => {
+                prioritySelect.value = 'Critical';
+                window.savedOverrideJustification = '';
+                if (downgradeModal) downgradeModal.style.display = 'none';
+            });
+        }
+
+        if (btnConfirmDowngrade) {
+            btnConfirmDowngrade.addEventListener('click', () => {
+                const standardReason = popupReasonSelect?.value || '';
+                const customReason = popupCustomText?.value.trim() || '';
+                const finalReason = standardReason === 'Other' ? customReason : standardReason;
+
+                if (!finalReason) {
+                    alert('Please select or specify a reason before proceeding.');
+                    return;
+                }
+
+                window.savedOverrideJustification = finalReason;
+                prioritySelect.value = pendingPriorityChange;
+                if (downgradeModal) downgradeModal.style.display = 'none';
+            });
+        }
+    }
+
+    // Initialize triage listener
+    setupLiveTriage();
     loadDashboardData();
 });

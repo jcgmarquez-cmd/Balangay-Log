@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BalangayLog - Case Management System</title>
     
-    <!-- Immediate Guard: If already logged in, do not render login page -->
+  <!-- Immediate Guard: If already logged in in this tab, do not render login page -->
     <script>
         try {
-            var token = localStorage.getItem('authToken');
-            var user = localStorage.getItem('currentUser');
-            if (token && user && token !== 'undefined' && user !== 'undefined') {
+            var token = sessionStorage.getItem('authToken');
+            var user = sessionStorage.getItem('currentUser');
+            if (token && user && token !== 'undefined' && user !== 'undefined' && token !== 'null' && user !== 'null') {
                 window.location.replace('dashboard.html');
             }
         } catch (e) {}

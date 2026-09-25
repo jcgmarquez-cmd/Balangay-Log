@@ -2,8 +2,8 @@
 // 1. STRICT SESSION VALIDATION HELPER
 // ==========================================
 function hasValidSession() {
-    const token = localStorage.getItem('authToken');
-    const user = localStorage.getItem('currentUser');
+    const token = sessionStorage.getItem('authToken');
+    const user = sessionStorage.getItem('currentUser');
     
     if (!token || !user) return false;
     if (token === 'undefined' || token === 'null') return false;
@@ -27,11 +27,11 @@ window.addEventListener('pageshow', function () {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Check initial DOM load
     if (hasValidSession()) {
         window.location.replace('dashboard.html');
         return;
     }
+
 
     // Element selections
     const loginForm = document.getElementById('loginForm');
@@ -109,9 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const data = await response.json();
 
-                if (response.ok && data.success) {
-                    localStorage.setItem('authToken', data.token);
-                    localStorage.setItem('currentUser', JSON.stringify(data.user));
+               if (response.ok && data.success) {
+                    sessionStorage.setItem('authToken', data.token);
+                    sessionStorage.setItem('currentUser', JSON.stringify(data.user));
                     window.location.replace('dashboard.html');
                 } else {
                     if (errorBanner) {

@@ -283,6 +283,77 @@
     z-index: 2;
 }
 
+/* ==========================================
+   NOTIFICATIONS / BELL DROPDOWN STYLES
+   ========================================== */
+
+/* Place it right here */
+/* Bell Dropdown Item Styling */
+.notif-item {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    text-decoration: none;
+    cursor: pointer;
+    background: #f8fafc;
+    border-left: 4px solid #cbd5e1;
+    transition: background 0.15s ease;
+}
+
+.notif-item:hover {
+    background: #f1f5f9;
+}
+
+/* Priority Accent Borders & Labels */
+.notif-item.notif-critical {
+    border-left-color: #ef4444;
+    background: #fef2f2;
+}
+.notif-item.notif-critical .notif-label {
+    color: #b91c1c;
+    font-weight: 800;
+}
+
+.notif-item.notif-high {
+    border-left-color: #f97316;
+    background: #fff7ed;
+}
+.notif-item.notif-high .notif-label {
+    color: #c2410c;
+    font-weight: 800;
+}
+
+.notif-item.notif-low {
+    border-left-color: #10b981;
+    background: #f0fdf4;
+}
+.notif-item.notif-low .notif-label {
+    color: #15803d;
+    font-weight: 800;
+}
+
+.notif-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3px;
+}
+
+.notif-title {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 2px;
+}
+
+.notif-meta {
+    font-size: 0.74rem;
+    color: #64748b;
+}
+
 /* --- EMERGENCY ALERT BANNER --- */
 .alert-banner {
     background-color: #e11d48;     /* Bright crimson urgent red */
@@ -509,14 +580,19 @@
 
 /* --- ENCODE MODAL STYLING --- */
 .modal-overlay {
-    position: fixed;
+    position: fixed;    
     inset: 0;
-    background-color: rgba(11, 21, 40, 0.6);
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(11, 21, 40, 0.65);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 999;
+    z-index: 99999; /* Set higher than the sidebar */
     backdrop-filter: blur(2px);
+    padding: 16px;
+    box-sizing: border-box;
+    overscroll-behavior: contain;
 }
 
 .modal-container {
@@ -524,15 +600,20 @@
     border-radius: 14px;
     width: 100%;
     max-width: 580px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25);
     overflow: hidden;
+    overscroll-behavior: contain;
 }
 
 .modal-header {
+    flex-shrink: 0; /* Header stays locked at top */
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 24px;
+    padding: 18px 24px;
     background-color: #f8fafc;
     border-bottom: 1px solid #e2e8f0;
 }
@@ -541,6 +622,7 @@
     font-size: 1.1rem;
     font-weight: 800;
     color: #0f172a;
+    margin: 0;
 }
 
 .modal-subtitle {
@@ -548,6 +630,7 @@
     color: #64748b;
     font-weight: 600;
     display: block;
+    margin-top: 2px;
 }
 
 .modal-close {
@@ -557,6 +640,7 @@
     color: #94a3b8;
     cursor: pointer;
     line-height: 1;
+    padding: 0;
 }
 
 .modal-close:hover {
@@ -564,12 +648,57 @@
 }
 
 .modal-form {
-    padding: 20px 24px;
+    padding: 20px 24px 16px 24px;
     display: flex;
     flex-direction: column;
     gap: 14px;
-    max-height: 75vh;
     overflow-y: auto;
+    flex: 1;
+    box-sizing: border-box;
+    overscroll-behavior: contain; /* Traps wheel events inside the form */
+}
+
+.modal-actions {
+    position: static;          /* Removes sticky floating behavior */
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    padding-bottom: 8px;
+    border-top: 1px solid #f1f5f9;
+}
+
+/* Button UI styling */
+.btn-cancel {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    padding: 9px 18px;
+    border-radius: 7px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-cancel:hover {
+    background: #e2e8f0;
+}
+
+.btn-submit {
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    padding: 9px 20px;
+    border-radius: 7px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-submit:hover {
+    background: #1d4ed8;
 }
 
 .form-section-title {
@@ -878,34 +1007,95 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    justify-content: flex-end;
 }
 
 /* Priority Badges */
 .badge {
     font-size: 0.72rem;
-    padding: 3px 10px;
+    padding: 3px 0;
+    width: 76px;
     border-radius: 9999px;
     font-weight: 700;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+    white-space: nowrap;
 }
 .badge-low { background: #dcfce7; color: #15803d; }
 .badge-medium { background: #fef3c7; color: #b45309; }
 .badge-high { background: #ffedd5; color: #c2410c; }
 .badge-critical { background: #fee2e2; color: #b91c1c; }
 
-/* Status Pills */
-.pill {
+/* Status Pills Base */
+/* Status Pills Base */
+.pill { 
     font-size: 0.72rem;
-    padding: 3px 10px;
+    padding: 3px 0;
+    width: 98px;
     border-radius: 6px;
     font-weight: 700;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+    white-space: nowrap;
 }
-.pill-pending { background: #f1f5f9; color: #475569; }
-.pill-progress { background: #eff6ff; color: #1d4ed8; }
-.pill-resolution { background: #fffbeb; color: #b45309; }
-.pill-referred { background: #f5f3ff; color: #6d28d9; }
-.pill-resolved { background: #ecfdf5; color: #047857; }
+
+/* Suggest Button */
+.btn-suggest {
+    width: 74px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+
+/* 1. Pending (Neutral Slate) */
+.pill-pending { 
+    background: #f1f5f9; 
+    color: #475569; 
+}
+
+/* 2. In Progress (Active Blue - supports both class variations) */
+.pill-in-progress,
+.pill-progress { 
+    background: #eff6ff; 
+    color: #1d4ed8; 
+}
+
+/* 3. Critical / Urgent (High-Alert Red) */
+.pill-critical,
+.pill-urgent { 
+    background: #fee2e2; 
+    color: #b91c1c; 
+}
+
+/* 4. For Resolution / Lupon (Amber) */
+.pill-for-resolution,
+.pill-resolution { 
+    background: #fffbeb; 
+    color: #b45309; 
+}
+
+/* 5. Referred (Purple) */
+.pill-referred { 
+    background: #f5f3ff; 
+    color: #6d28d9; 
+}
+
+/* 6. Resolved (Green) */
+.pill-resolved { 
+    background: #ecfdf5; 
+    color: #047857; 
+}
 
 /* AI Suggest Action Button */
 .btn-suggest {

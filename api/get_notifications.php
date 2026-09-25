@@ -12,7 +12,7 @@ if ($conn->connect_error) {
     exit();
 }
 
-// 1. Critical Emergencies (Immediate action required)
+// 1. Critical Emergencies
 $criticalRes = $conn->query("SELECT id, reference_number, incident_type, purok, created_at 
     FROM incident_reports 
     WHERE (priority_level = 'Critical' OR status = 'CRITICAL') AND status != 'RESOLVED' 
@@ -23,18 +23,18 @@ if ($criticalRes) {
     while ($row = $criticalRes->fetch_assoc()) {
         $criticalCases[] = [
             'id' => $row['id'],
-            'category_label' => 'CRITICAL EMERGENCY',
-            'type' => 'critical',
+            'reference_number' => $row['reference_number'],
             'title' => $row['incident_type'],
-            'subtext' => $row['reference_number'] . ' · ' . $row['purok'],
+            'purok' => $row['purok'],
+            'category_label' => 'CRITICAL EMERGENCY',
+            'priority' => 'critical',
             'badge_color' => '#dc2626',
-            'border_color' => '#ef4444',
-            'target_url' => 'dashboard.html#urgentBanner'
+            'border_color' => '#ef4444'
         ];
     }
 }
 
-// 2. High Priority Peace & Order Incidents
+// 2. High Priority Incidents
 $highRes = $conn->query("SELECT id, reference_number, incident_type, purok, created_at 
     FROM incident_reports 
     WHERE priority_level = 'High' AND status != 'CRITICAL' AND status != 'RESOLVED' 
@@ -45,45 +45,46 @@ if ($highRes) {
     while ($row = $highRes->fetch_assoc()) {
         $highCases[] = [
             'id' => $row['id'],
-            'category_label' => 'HIGH PRIORITY',
-            'type' => 'high',
+            'reference_number' => $row['reference_number'],
             'title' => $row['incident_type'],
-            'subtext' => $row['reference_number'] . ' · ' . $row['purok'],
+            'purok' => $row['purok'],
+            'category_label' => 'HIGH PRIORITY',
+            'priority' => 'high',
             'badge_color' => '#d97706',
-            'border_color' => '#f97316',
-            'target_url' => 'dashboard.html#caseListPanel'
+            'border_color' => '#f97316'
         ];
     }
 }
 
-// 3. Unverified Citizen Reports (Spam / Fake Check Queue)
-$spamRes = $conn->query("SELECT id, reference_number, incident_type, purok, created_at 
+// 3. Low Priority Incidents
+$lowRes = $conn->query("SELECT id, reference_number, incident_type, purok, created_at 
     FROM incident_reports 
-    WHERE verification_level = 'UNVERIFIED' AND status != 'RESOLVED' 
+    WHERE priority_level = 'Low' AND status != 'CRITICAL' AND status != 'RESOLVED' 
     ORDER BY id DESC LIMIT 10");
 
-$spamCases = [];
-if ($spamRes) {
-    while ($row = $spamRes->fetch_assoc()) {
-        $spamCases[] = [
+$lowCases = [];
+if ($lowRes) {
+    while ($row = $lowRes->fetch_assoc()) {
+        $lowCases[] = [
             'id' => $row['id'],
-            'category_label' => 'UNVERIFIED / SPAM',
-            'type' => 'spam',
+            'reference_number' => $row['reference_number'],
             'title' => $row['incident_type'],
-            'subtext' => $row['reference_number'] . ' · Pending Review',
-            'badge_color' => '#475569',
-            'border_color' => '#64748b',
-            'target_url' => 'dashboard.html#caseListPanel'
+            'purok' => $row['purok'],
+            'category_label' => 'LOW PRIORITY',
+            'priority' => 'low',
+            'badge_color' => '#15803d',
+            'border_color' => '#10b981'
         ];
     }
 }
 
 $countCritical = count($criticalCases);
 $countHigh     = count($highCases);
-$countSpam     = count($spamCases);
-$totalCombined = $countCritical + $countHigh + $countSpam;
+$countLow      = count($lowCases);
+$totalCombined = $countCritical + $countHigh + $countLow;
 
-$allNotifications = array_merge($criticalCases, $highCases, $spamCases);
+// Critical first, then High, then Low
+$allNotifications = array_merge($criticalCases, $highCases, $lowCases);
 
 echo json_encode([
     'success' => true,
@@ -91,7 +92,7 @@ echo json_encode([
         'total' => $totalCombined,
         'critical' => $countCritical,
         'high' => $countHigh,
-        'spam' => $countSpam
+        'low' => $countLow
     ],
     'notifications' => $allNotifications
 ]);
