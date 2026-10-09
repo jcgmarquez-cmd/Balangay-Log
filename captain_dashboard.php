@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/auth.php';
+include __DIR__ . '/views/settings_partial.php';
 requireRole(['CAPTAIN']);
 $currentUser = getCurrentUser();
 $captainName = htmlspecialchars((string) ($currentUser['full_name'] ?? 'Barangay Captain'), ENT_QUOTES, 'UTF-8');

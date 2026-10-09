@@ -12,15 +12,42 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
 	<title>System Administration | BalangayLog</title>
-	<link rel="stylesheet" href="admin-dashboard.css">
+	<script>
+    if (localStorage.getItem('balangay_theme') === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+</script>
+	<link rel="stylesheet" href="admin-dashboard.css?v=<?= time() ?>" />
 </head>
 <body>
-	<div class="admin-shell">
-		<aside class="admin-sidebar">
-			<a class="admin-brand" href="admin_dashboard.php" aria-label="BalangayLog System Overview">
-				<span class="admin-brand-mark">B</span>
-				<span><strong>BalangayLog</strong><small>BARANGAY DUALE</small></span>
-			</a>
+<div class="admin-shell">
+        <!-- Backdrop Dimmer Overlay -->
+        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+        <!-- Sticky Mobile Header Bar -->
+        <header class="mobile-top-header">
+            <button class="mobile-hamburger-btn" id="mobileMenuBtn" type="button" aria-label="Open Navigation">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+            <a class="admin-brand mobile-brand-inline" href="admin_dashboard.php">
+                <span class="admin-brand-mark">B</span>
+                <span><strong>BalangayLog</strong><small>BARANGAY DUALE</small></span>
+            </a>
+        </header>
+
+        <!-- Sliding Sidebar Drawer -->
+        <aside class="admin-sidebar" id="adminSidebar">
+            <div class="sidebar-header-row">
+                <a class="admin-brand" href="admin_dashboard.php" aria-label="BalangayLog System Administration">
+                    <span class="admin-brand-mark">B</span>
+                    <span><strong>BalangayLog</strong><small>BARANGAY DUALE</small></span>
+                </a>
+                <button class="sidebar-close-btn" id="sidebarCloseBtn" type="button" aria-label="Close Navigation">×</button>
+            </div>
 
 			<div class="admin-identity">
 				<span class="identity-avatar" id="adminAvatar">AD<img id="adminProfilePicture" alt="" hidden></span>
@@ -36,9 +63,12 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
 				<button class="admin-nav-link" type="button" data-view="settings"><span class="nav-symbol">⚙</span>Settings</button>
 			</nav>
 
-			<div class="sidebar-bottom">
-				<button class="logout-link" id="logoutBtn" type="button">Log out</button>
-			</div>
+		<div class="sidebar-bottom">
+   		 <button class="back-link" id="themeToggleBtn" type="button" style="display: flex; align-items: center; justify-content: space-between;">
+   	     	<span id="themeToggleLabel">Dark Mode</span>
+   		 </button>
+    <button class="logout-link" id="logoutBtn" type="button">Log out</button>
+		</div>
 		</aside>
 
 		<main class="admin-main">
@@ -98,13 +128,98 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
 				<div class="content-panel"><form class="audit-filters" id="auditFilterForm"><label class="search-field"><span class="sr-only">Search audit logs</span><input id="auditSearch" type="search" placeholder="Search user, action or details"></label><select id="auditUserFilter" aria-label="Filter by user"><option value="">All users</option></select><select id="auditActionFilter" aria-label="Filter by action"><option value="">All actions</option></select><input id="auditFrom" type="date" aria-label="From date"><input id="auditTo" type="date" aria-label="To date"><button type="submit" class="button button-quiet">Filter</button></form><div class="table-scroll"><table><thead><tr><th>Date / time</th><th>User</th><th>Action</th><th>Details</th></tr></thead><tbody id="auditRows"></tbody></table></div><p class="empty-message" id="auditEmpty" hidden>No activity found for these filters.</p></div>
 			</section>
 
-			<section class="admin-view" id="view-settings" hidden>
-				<div class="section-heading"><div><h2>Administrator settings</h2><p>Update your account details and password.</p></div></div>
-				<div class="settings-grid">
-					<form class="content-panel settings-form" id="profileForm" enctype="multipart/form-data"><h2>Account information</h2><p>These details are attached to your admin activity.</p><label>Full name<input name="full_name" id="settingsName" required></label><label>Contact number<input name="contact_number" id="settingsContact"></label><label>Profile picture (optional)<input name="profile_picture" type="file" accept="image/png,image/jpeg,image/webp"></label><button class="button button-primary" type="submit">Save account details</button></form>
-					<form class="content-panel settings-form" id="passwordForm"><h2>Change password</h2><p>Choose a password you do not use elsewhere.</p><label>Current password<input name="current_password" type="password" autocomplete="current-password" required></label><label>New password<input name="new_password" type="password" minlength="8" autocomplete="new-password" required></label><label>Confirm new password<input name="confirm_password" type="password" minlength="8" autocomplete="new-password" required></label><button class="button button-primary" type="submit">Update password</button></form>
+<section class="admin-view" id="view-settings" hidden>
+	<div class="section-heading">
+		<div>
+			<h2>Profile &amp; Settings</h2>
+			<p>Review administrative details and manage account security.</p>
+		</div>
+	</div>
+
+	<div class="settings-stack">
+		<div class="content-panel profile-card">
+			<form id="profileForm" enctype="multipart/form-data">
+				<div class="profile-header-group">
+<div class="profile-avatar-wrap">
+    <div class="profile-avatar-lg" id="settingsAvatarBadge">
+        <span id="settingsAvatarInitials"><?= strtoupper(substr($adminName, 0, 2)) ?></span>
+        <img id="settingsAvatarPreview" alt="Profile Preview" style="display: none;">
+    </div>
+    <label class="avatar-upload-trigger" for="settingsPhotoInput" title="Upload new photo" aria-label="Upload photo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+        </svg>
+    </label>
+    <input type="file" name="profile_picture" id="settingsPhotoInput" accept="image/png,image/jpeg,image/webp" class="sr-only">
+</div>
+					
+					<div class="profile-title-block">
+						<h2 id="settingsProfileName"><?= $adminName ?></h2>
+						<span class="role-badge"><?= htmlspecialchars((string)($currentUser['user_type'] ?? 'Admin'), ENT_QUOTES, 'UTF-8') ?></span>
+					</div>
+
+					<div class="profile-save-action">
+						<button class="button button-quiet" type="submit" id="saveProfileBtn">Save Profile Details</button>
+					</div>
 				</div>
-			</section>
+
+				<div class="profile-meta-grid">
+					<div class="meta-item">
+						<label class="meta-label" for="settingsName">FULL NAME</label>
+						<input class="meta-input" name="full_name" id="settingsName" value="<?= $adminName ?>" required>
+					</div>
+
+					<div class="meta-item">
+						<span class="meta-label">USERNAME / LOGIN</span>
+						<strong class="meta-value"><?= htmlspecialchars((string)($currentUser['username'] ?? $currentUser['email_or_phone'] ?? '—'), ENT_QUOTES, 'UTF-8') ?></strong>
+					</div>
+
+					<div class="meta-item">
+						<span class="meta-label">ROLE TYPE</span>
+						<strong class="meta-value"><?= htmlspecialchars((string)($currentUser['user_type'] ?? 'System Administrator'), ENT_QUOTES, 'UTF-8') ?></strong>
+					</div>
+
+					<div class="meta-item">
+						<label class="meta-label" for="settingsContact">CONTACT NUMBER</label>
+						<input class="meta-input" name="contact_number" id="settingsContact" value="<?= htmlspecialchars((string)($currentUser['contact_number'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. 09171234567">
+					</div>
+				</div>
+			</form>
+		</div>
+
+		<!-- Bottom Card: Change Password -->
+		<div class="content-panel password-card">
+			<div class="panel-heading">
+				<div>
+					<h2>Change Password</h2>
+					<p>Ensure your account uses a secure password.</p>
+				</div>
+			</div>
+
+			<form class="settings-password-form" id="passwordForm">
+				<div class="form-group">
+					<label for="current_password">Current Password</label>
+					<input name="current_password" id="current_password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+				</div>
+
+				<div class="form-group">
+					<label for="new_password">New Password</label>
+					<input name="new_password" id="new_password" type="password" minlength="8" autocomplete="new-password" placeholder="••••••••" required>
+				</div>
+
+				<div class="form-group">
+					<label for="confirm_password">Confirm New Password</label>
+					<input name="confirm_password" id="confirm_password" type="password" minlength="8" autocomplete="new-password" placeholder="••••••••" required>
+				</div>
+
+				<div class="form-actions">
+					<button class="button button-primary" type="submit">Update Password</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</section>
 		</main>
 	</div>
 
@@ -119,6 +234,6 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
 	<dialog class="admin-dialog" id="reasonDialog"><form id="reasonForm" method="dialog"><div class="dialog-heading"><div><p class="eyebrow">REASON REQUIRED</p><h2 id="reasonDialogTitle">Add a reason</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button></div><input type="hidden" name="action"><input type="hidden" name="id"><input type="hidden" name="status"><label>Reason<textarea name="reason" rows="4" required></textarea></label><div class="dialog-actions"><button class="button button-quiet" type="button" data-close-dialog>Cancel</button><button class="button button-danger" type="submit">Confirm</button></div></form></dialog>
 
 	<dialog class="admin-dialog" id="historyDialog"><div class="dialog-heading"><div><p class="eyebrow">INVENTORY RECORD</p><h2>Equipment history</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button></div><div id="equipmentHistoryRows" class="history-list"></div></dialog>
-	<script src="admin-dashboard.js" defer></script>
+	<script src="admin-dashboard.js?v=<?= time() ?>"></script>
 </body>
 </html>
