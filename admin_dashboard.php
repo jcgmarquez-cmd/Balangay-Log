@@ -41,7 +41,7 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
         	<div class="sidebar-header-row">
                 <a class="admin-brand" href="captain_dashboard.php" aria-label="BalangayLog Executive Overview">
                 <span class="admin-brand-mark" style="background: transparent; overflow: hidden; display: grid; place-items: center;">
-                  <img src="assets/balangaylog-transparent.png" alt="Barangay Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                  <img src="assets/balangaylog-logo.png" alt="Barangay Logo" style="width: 100%; height: 100%; object-fit: contain;">
                 </span>
                 <span><strong>BalangayLog</strong><small>BARANGAY DUALE</small></span>
             </a>

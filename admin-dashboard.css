@@ -3009,6 +3009,26 @@ html[data-theme="dark"] textarea,
     }
 }
 
+/* Sidebar section label (OPERATIONS): styled here so the collapsed rules can hide it */
+.admin-sidebar > .sidebar-section-label {
+    margin: 4px 10px 8px;
+    color: #a9cfc2;
+    font-size: 9.5px;
+}
+
+.sidebar-collapsed .admin-sidebar > .sidebar-section-label {
+    margin: 0;
+    overflow: hidden;
+    font-size: 0;
+}
+
+@media (max-width: 768px) {
+    .sidebar-collapsed .admin-sidebar > .sidebar-section-label {
+        margin: 4px 10px 8px;
+        font-size: 9.5px;
+    }
+}
+
 /* ==========================================================================
    Dark Mode Fix for Dispatch Case Progress Box
    ========================================================================== */

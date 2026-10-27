@@ -890,7 +890,7 @@ async function inspectNarrativeWithAI(narrativeText) {
                 'X-CSRF-Token': (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
             },
             body: JSON.stringify({
-                action: 'inspect_triage',
+                action: 'inspect_triage_ai',
                 narrative_description: trimmed
             })
         });
@@ -1418,12 +1418,106 @@ document.getElementById('luponDestinationSelect')?.addEventListener('change', (e
     document.getElementById('luponReasonInput').required = true;
 });
 
+// ==========================================
+// SAFELY UPDATED FORM SUBMISSION FOR WALK-IN ENCODE
+// ==========================================
+// ---------------------------------------------------------------
+// Optional photos on a report: picker with previews, and resizing before upload
+// ---------------------------------------------------------------
+const EVIDENCE_MAX_PHOTOS = 4;
+const EVIDENCE_MAX_EDGE = 1600;
+const EVIDENCE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+// Shrinks a photo so uploads stay small. Re-encoding also drops hidden data such as GPS tags.
+async function shrinkEvidencePhoto(file) {
+    if (!EVIDENCE_TYPES.includes(file.type)) return file;
+    try {
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, EVIDENCE_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        if (bitmap.close) bitmap.close();
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+        if (!blob) return file;
+        return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+    } catch (err) {
+        return file;
+    }
+}
+
+function drawEvidencePreview() {
+    const input = document.getElementById('evidencePhotosInput');
+    const preview = document.getElementById('evidencePreview');
+    if (!input || !preview) return;
+    preview.innerHTML = '';
+    Array.from(input.files).forEach((file, index) => {
+        const cell = document.createElement('div');
+        cell.style.cssText = 'position: relative; width: 76px; height: 76px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(128,128,128,0.35);';
+        const img = document.createElement('img');
+        img.alt = file.name;
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; display: block;';
+        img.src = URL.createObjectURL(file);
+        img.addEventListener('load', () => URL.revokeObjectURL(img.src));
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = '×';
+        remove.setAttribute('aria-label', 'Remove photo');
+        remove.style.cssText = 'position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border: none; border-radius: 50%; background: rgba(0,0,0,0.65); color: #fff; font-size: 14px; line-height: 1; cursor: pointer;';
+        remove.addEventListener('click', () => {
+            const kept = new DataTransfer();
+            Array.from(input.files).forEach((f, i) => { if (i !== index) kept.items.add(f); });
+            input.files = kept.files;
+            drawEvidencePreview();
+        });
+        cell.append(img, remove);
+        preview.append(cell);
+    });
+}
+
+function clearEvidencePicker() {
+    const input = document.getElementById('evidencePhotosInput');
+    if (input) input.value = '';
+    drawEvidencePreview();
+}
+
+document.getElementById('evidencePhotosInput')?.addEventListener('change', (e) => {
+    const input = e.currentTarget;
+    const hint = document.getElementById('evidenceHint');
+    const accepted = Array.from(input.files).filter(f => EVIDENCE_TYPES.includes(f.type));
+    const trimmed = accepted.slice(0, EVIDENCE_MAX_PHOTOS);
+    let message = '';
+    if (accepted.length < input.files.length) message = 'Only JPG, PNG or WebP photos can be attached.';
+    else if (accepted.length > EVIDENCE_MAX_PHOTOS) message = `Only the first ${EVIDENCE_MAX_PHOTOS} photos were kept.`;
+    if (trimmed.length !== input.files.length) {
+        const kept = new DataTransfer();
+        trimmed.forEach(f => kept.items.add(f));
+        input.files = kept.files;
+    }
+    if (hint && message) hint.textContent = message;
+    drawEvidencePreview();
+});
+
+async function collectEvidencePhotos() {
+    const input = document.getElementById('evidencePhotosInput');
+    const files = input ? Array.from(input.files).slice(0, EVIDENCE_MAX_PHOTOS) : [];
+    return Promise.all(files.map(shrinkEvidencePhoto));
+}
+
 document.getElementById('encodeCaseForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.currentTarget;
     const submitBtn = form.querySelector('button[type="submit"]');
+    document.getElementById('encodeCaseError')?.remove();
 
-    if (submitBtn) submitBtn.disabled = true;
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Filing Case...';
+    }
 
     try {
         const formData = new FormData(form);
@@ -1431,31 +1525,58 @@ document.getElementById('encodeCaseForm')?.addEventListener('submit', async (e) 
 
         if (!narrative) {
             showNotice('Narrative description is required.', true);
-            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Encode & Log Case';
+            }
             return;
         }
 
-        const payload = {
-            action: 'encode_case',
-            complainant_name: (formData.get('complainant_name') || 'Walk-in Resident').trim(),
-            complainant_phone: (formData.get('complainant_phone') || 'N/A').trim(),
-            incident_type: (formData.get('incident_type') || 'General Incident').trim(),
-            purok: (formData.get('purok') || 'Purok 1').trim(),
-            street_address: (formData.get('street_address') || '').trim(),
-            narrative_description: narrative,
-            priority_level: formData.get('priority_level') || 'Low'
-        };
+        const street = (formData.get('street_address') || '').trim();
+        const sitio = (formData.get('purok') || '').trim();
 
-        const res = await requestOfficer('encode_case', payload);
+        // Location is resolved on the server (street lookup, then purok center), so the browser sends no coordinates.
+
+        // Sent as a form upload so photos can travel with the report.
+        const upload = new FormData();
+        upload.append('action', 'encode_case');
+        upload.append('complainant_name', (formData.get('complainant_name') || 'Walk-in Resident').trim());
+        upload.append('complainant_phone', (formData.get('complainant_phone') || 'N/A').trim());
+        upload.append('incident_type', document.getElementById('aiGeneratedCategoryInput')?.value || (formData.get('incident_type') || 'General Incident').trim());
+        upload.append('purok', sitio);
+        upload.append('street_address', street);
+        upload.append('narrative_description', narrative);
+        (await collectEvidencePhotos()).forEach(photo => upload.append('photos[]', photo, photo.name));
+
+        const res = await requestOfficer('encode_case', {}, { formData: upload });
+        clearEvidencePicker();
         const encodeDialog = document.getElementById('encodeCaseDialog');
-        if (encodeDialog) encodeDialog.close();
+        if (encodeDialog) {
+            if (typeof encodeDialog.close === 'function') encodeDialog.close();
+            else encodeDialog.removeAttribute('open');
+        }
 
         showNotice(res.message || 'Case recorded successfully.');
         await refreshOperationsData();
     } catch (err) {
         showNotice(err.message, true);
+        // The page banner sits behind the open modal, so also show the error inside the dialog.
+        let errBox = document.getElementById('encodeCaseError');
+        if (!errBox) {
+            errBox = document.createElement('p');
+            errBox.id = 'encodeCaseError';
+            errBox.setAttribute('role', 'alert');
+            errBox.style.cssText = 'color:#d61818;font-weight:700;font-size:13px;margin:10px 0 0;';
+            const actions = form.querySelector('.dialog-actions');
+            if (actions) actions.before(errBox); else form.append(errBox);
+        }
+        errBox.textContent = err.message;
+        errBox.scrollIntoView({ block: 'nearest' });
     } finally {
-        if (submitBtn) submitBtn.disabled = false;
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Encode & Log Case';
+        }
     }
 });
 

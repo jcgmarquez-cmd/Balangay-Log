@@ -62,7 +62,7 @@ if (!$initials) $initials = 'JD';
             <div class="sidebar-header-row">
                 <a class="admin-brand" href="captain_dashboard.php" aria-label="BalangayLog Executive Overview">
                 <span class="admin-brand-mark" style="background: transparent; overflow: hidden; display: grid; place-items: center;">
-                  <img src="assets/balangaylog-transparent.png" alt="Barangay Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                  <img src="assets/balangaylog-logo.png" alt="Barangay Logo" style="width: 100%; height: 100%; object-fit: contain;">
                 </span>
                 <span><strong>BalangayLog</strong><small>BARANGAY DUALE</small></span>
             </a>
@@ -354,8 +354,8 @@ if (!$initials) $initials = 'JD';
         <form id="incidentForm" method="dialog">
             <div class="dialog-heading">
                 <div>
-                    <h2 style="font-size: 19px; font-weight: 800; font-family: 'Manrope', sans-serif;">Encode Walk-In Desk Blotter</h2>
-                    <p style="margin: 3px 0 0; color: var(--muted); font-size: 12px;">Transcribe citizen narrative. Category and Priority are evaluated automatically by AI.</p>
+                    <h2 style="font-size: 19px; font-weight: 800; font-family: 'Manrope', sans-serif;">Report an Incident</h2>
+                    <p style="margin: 3px 0 0; color: var(--muted); font-size: 12px;">Describe what happened. Category and priority are evaluated automatically.</p>
                 </div>
                 <button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button>
             </div>
@@ -400,6 +400,13 @@ if (!$initials) $initials = 'JD';
                     <div>
                         <label for="narrativeDescriptionInput">Blotter Narrative &amp; Facts *</label>
                         <textarea id="narrativeDescriptionInput" name="narrative" rows="5" required placeholder="Type the incident narrative facts here. The AI will evaluate the details to automatically categorize and assign priority..."></textarea>
+                    </div>
+
+                    <div style="margin-top: 12px;">
+                        <label for="evidencePhotosInput">Photos (optional)</label>
+                        <input type="file" id="evidencePhotosInput" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple>
+                        <div id="evidencePreview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"></div>
+                        <p id="evidenceHint" style="font-size: 11px; color: var(--muted); margin: 6px 0 0;">Up to 4 photos (JPG, PNG or WebP). Large photos are resized automatically.</p>
                     </div>
 
                     <input type="hidden" name="incident_type" id="aiGeneratedCategoryInput" value="General Incident">

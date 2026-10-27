@@ -6,7 +6,7 @@ header('Content-Type: application/json; charset=UTF-8');
 
 require_once __DIR__ . '/../auth.php';
 require_once __DIR__ . '/../lib/case_workflow.php';
-require_once __DIR__ . '/../sms_helper.php'; // Required for SMS updates[cite: 16]
+require_once __DIR__ . '/sms_helper.php'; // Required for SMS updates
 
 function fail(int $code, string $msg): void {
     http_response_code($code);

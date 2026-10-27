@@ -22,6 +22,19 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="admin-dashboard.css?v=<?= time() ?>">
     <link rel="stylesheet" href="captain-dashboard.css?v=<?= time() ?>">
+    
+    <!-- Mapbox GL JS & CSS CDNs -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+
+    <link rel="stylesheet" href="captain-geo.css?v=<?= time() ?>">
+    <?php
+    $mapboxPublicToken = '';
+    $mapboxCfg = __DIR__ . '/config/mapbox_public.php';
+    if (is_file($mapboxCfg)) { $mapboxPublicToken = (string) (require $mapboxCfg); }
+    ?>
+    <script>window.MAPBOX_PUBLIC_TOKEN = <?= json_encode($mapboxPublicToken) ?>;</script>
+    <script src="captain-geo.js?v=<?= time() ?>" defer></script>
 </head>
 <body>
 	<div class="admin-shell">
@@ -43,7 +56,7 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
             <div class="sidebar-header-row">
                 <a class="admin-brand" href="captain_dashboard.php" aria-label="BalangayLog Executive Overview">
                 <span class="admin-brand-mark" style="background: transparent; overflow: hidden; display: grid; place-items: center;">
-                  <img src="assets/balangaylog-transparent.png" alt="Barangay Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                  <img src="assets/balangaylog-logo.png" alt="Barangay Logo" style="width: 100%; height: 100%; object-fit: contain;">
                 </span>
                 <span><strong>BalangayLog</strong><small>BARANGAY DUALE</small></span>
             </a>
@@ -297,27 +310,157 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
                 </div>
             </section>
 
-            <!-- VIEW 5: PUROK INCIDENT HEATMAP -->
-            <section class="admin-view" id="view-heatmap" hidden>
-                <div class="section-heading">
+            <!-- VIEW 5: GEOGRAPHIC HEATMAPS (Full Page Map) -->
+            <section class="admin-view" id="view-heatmap" hidden style="display: flex; flex-direction: column; height: calc(100vh - 100px);">
+                <div class="section-heading" style="margin-bottom: 12px; flex-shrink: 0;">
                     <div>
-                        <h2>Purok incident heatmap</h2>
-                        <p>Darker tiles mean more incidents in the selected period.</p>
+                        <h2>Geographic Heatmaps &amp; Situation Hub</h2>
+                        <p>Interactive vector maps, infrastructure overlays, and live case tracking feeds.</p>
                     </div>
-                    <label class="select-field">
-                        <span class="sr-only">Period</span>
-                        <select id="heatPeriod">
-                            <option value="month">This month</option>
-                            <option value="all">All time</option>
-                        </select>
-                    </label>
                 </div>
-                <div class="content-panel">
-                    <div id="heatGrid" class="heat-grid"></div>
-                    <p class="empty-message" id="heatEmpty" hidden>No incidents recorded for this period.</p>
+
+                <div class="geo-container" style="flex: 1; display: block; width: 100%; height: 100%; position: relative;">
+                    <!-- Map View Pane (Full Width & Height) -->
+                    <div class="map-view-pane" style="position: relative; width: 100%; height: 100%;">
+                        <div id="captainMap" style="width: 100%; height: 100%;"></div>
+
+                        <!-- Left Floating Dark Vertical Toolbar with Badges -->
+                        <div class="geo-toolbar">
+                            <button type="button" class="geo-tool-btn" id="btnLayers" title="Toggle Overlays" style="position: relative;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                                <span class="warning-badge" style="top: -6px; right: -6px;">0</span>
+                            </button>
+
+                            <button type="button" class="geo-tool-btn" id="btnBasemap" title="Select Basemap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                            </button>
+                            <div class="geo-panel" id="panelBasemap" style="width: 260px;">
+                                <h4>Basemap Gallery</h4>
+                                <div class="basemap-grid-2x2">
+                                    <div class="basemap-tile active" data-basemap="streets"><span>Streets</span></div>
+                                    <div class="basemap-tile" data-basemap="navigation"><span>Navigation</span></div>
+                                    <div class="basemap-tile" data-basemap="osm"><span>OpenStreetMap</span></div>
+                                    <div class="basemap-tile" data-basemap="hybrid"><span>Hybrid</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Third Left Pill: Map Legend Trigger -->
+                            <button type="button" class="geo-tool-btn" id="btnLegend" title="Map Legend" style="position: relative;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                <span class="warning-badge" style="top: -6px; right: -6px; background: #0275d8;">2</span>
+                            </button>
+                            
+                            <!-- Floating Map Legend Panel -->
+                            <div class="geo-panel" id="panelLegend" style="width: 280px; max-height: 420px; overflow-y: auto;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 8px; margin-bottom: 12px;">
+                                    <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: #fff;">Map Legend</h4>
+                                    <span style="font-size: 10px; color: #8a9b99;">DUALE-GIS</span>
+                                </div>
+
+                                <div style="font-size: 11px;">
+                                    <div style="margin-bottom: 14px;">
+                                        <div style="display: flex; justify-content: space-between; font-weight: 800; color: #8a9b99; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">
+                                            <span>Case Severity Levels</span>
+                                            <span>AI Evaluated</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;"><span style="width: 12px; height: 12px; border-radius: 50%; background: #d9534f; display: inline-block;"></span><div><strong>Critical Severity</strong><br><span style="font-size: 10px; color: #b9c5c3;">80% – 100% Risk Score</span></div></div>
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;"><span style="width: 12px; height: 12px; border-radius: 50%; background: #f0ad4e; display: inline-block;"></span><div><strong>High Severity</strong><br><span style="font-size: 10px; color: #b9c5c3;">50% – 79% Risk Score</span></div></div>
+                                        <div style="display: flex; align-items: center; gap: 8px;"><span style="width: 12px; height: 12px; border-radius: 50%; background: #5cb85c; display: inline-block;"></span><div><strong>Low Severity / Minor</strong><br><span style="font-size: 10px; color: #b9c5c3;">0% – 49% Risk Score</span></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Floating Action Pills Vertical Stack -->
+                        <div class="geo-pills-right">
+                            <button type="button" class="geo-pill warning-alert-pill" id="pillEarlyWarning" title="Active Case Alerts">
+                                <span class="warning-icon">⚠️</span>
+                                <span class="warning-badge" id="warningBadgeCount">3</span>
+                            </button>
+                        </div>
+
+                        <!-- Active Case Alerts Floating Window -->
+                        <div class="geo-panel" id="earlyWarningDialog" style="position: absolute; right: 70px; top: 70px; width: 480px; max-height: 580px; overflow: hidden; z-index: 50; display: none; background: #172b35; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); flex-direction: column;">
+                            <div id="ewModalHeader" style="display: flex; justify-content: space-between; align-items: center; background: #0e1a21; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: move; user-select: none;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="color: #8a9b99; font-size: 14px; letter-spacing: 1px;" title="Drag window">⋮⋮</span>
+                                    <h4 id="ewModalTitle" style="margin: 0; font-size: 13px; font-weight: 700; color: #fff;">Active Case Alerts</h4>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <button type="button" id="ewMinimizeBtn" title="Minimize" style="background: none; border: none; color: #b9c5c3; font-size: 14px; cursor: pointer; padding: 2px 6px;">🗕</button>
+                                    <button type="button" id="ewMaximizeBtn" title="Maximize" style="background: none; border: none; color: #b9c5c3; font-size: 14px; cursor: pointer; padding: 2px 6px;">🗖</button>
+                                    <button type="button" data-close-dialog title="Close" style="background: none; border: none; color: #b9c5c3; font-size: 16px; cursor: pointer; padding: 2px 6px;">×</button>
+                                </div>
+                            </div>
+
+                            <div id="ewModalBody" style="padding: 16px; overflow-y: auto; flex: 1; max-height: 500px;">
+                                <div id="ewListView">
+                                    <div style="display: flex; gap: 8px; margin-bottom: 16px; background: #0e1a21; padding: 4px; border-radius: 8px;">
+                                        <button type="button" class="ew-tab-btn active" data-target="tabWarnings" style="flex: 1; padding: 8px; background: #19766c; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 11px;">Active Case Alerts</button>
+                                        <button type="button" class="ew-tab-btn" data-target="tabVulnerabilities" style="flex: 1; padding: 8px; background: transparent; color: #b9c5c3; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 11px;">Purok Vulnerabilities</button>
+                                        <button type="button" class="ew-tab-btn" data-target="tabLguFeeds" style="flex: 1; padding: 8px; background: transparent; color: #b9c5c3; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 11px;">LGU Feeds</button>
+                                    </div>
+
+                                    <div class="ew-tab-content" id="tabWarnings" style="display: block;">
+                                        <div id="dynamicCaseAlertsContainer">
+                                            <!-- Dynamically populated via captain-geo.js from database API -->
+                                        </div>
+                                    </div>
+
+                                    <div class="ew-tab-content" id="tabVulnerabilities" style="display: none; text-align: center; padding: 40px 20px; color: #8a9b99;">
+                                        <p style="font-size: 13px; margin: 0;">No active hazard vulnerability data currently loaded for this view.</p>
+                                    </div>
+
+                                    <div class="ew-tab-content" id="tabLguFeeds" style="display: none;">
+                                        <div style="background: #223c47; border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                                <span style="background: #0275d8; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: bold; color:#fff;">f</span>
+                                                <div>
+                                                    <strong style="font-size: 12px; display: block; color:#fff;">Barangay Duale Information Office</strong>
+                                                    <span style="font-size: 10px; color: #8a9b99;">Public LGU Update</span>
+                                                </div>
+                                            </div>
+                                            <p style="font-size: 11px; color: #cbd5d1; margin: 0 0 8px 0;">Ongoing distribution of relief packs and medical kits at the Duale Covered Court for registered families. Please bring valid IDs.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="ewDetailView" style="display: none;">
+                                    <button type="button" id="backToListBtn" style="background: none; border: none; color: #58a69b; font-size: 12px; font-weight: 700; cursor: pointer; margin-bottom: 12px; display: flex; align-items: center; gap: 4px;">← Back to Active Case Alerts</button>
+                                    
+                                    <div style="display: flex; gap: 8px; margin-bottom: 16px; background: #0e1a21; padding: 4px; border-radius: 8px;">
+                                        <button type="button" class="ew-subtab-btn active" data-subtarget="subOverview" style="flex: 1; padding: 8px; background: #19766c; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 11px;">Overview</button>
+                                        <button type="button" class="ew-subtab-btn" data-subtarget="subSituations" style="flex: 1; padding: 8px; background: transparent; color: #b9c5c3; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 11px;">Situations</button>
+                                    </div>
+
+                                    <div class="ew-subtab-content" id="subOverview" style="display: block; font-size: 12px; color: #cbd5d1;">
+                                        <h4 id="ovCaseTitle" style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 6px;">—</h4>
+                                        <p id="ovCaseDate" style="color: #8a9b99; margin-bottom: 12px;">—</p>
+                                        <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                                            <span id="ovSeverityBadge" style="background: #d9534f; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 10px;">CRITICAL</span>
+                                            <span id="ovStatusBadge" style="background: #223c47; border: 1px solid rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 10px;">Unit Dispatched</span>
+                                        </div>
+                                        <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                                            <strong style="color: #fff; display: block; margin-bottom: 4px;">CASE PARAMETERS &amp; INTAKE SUMMARY</strong>
+                                            <p id="ovDescriptionText" style="margin: 0; line-height: 1.5;">—</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="ew-subtab-content" id="subSituations" style="display: none;"><!-- Rendered by captain-geo.js --></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom-Left Widgets -->
+                        <div class="geo-bottom-left">
+                            <div class="geo-widget-pill" id="gridPill">Duale Grid [14.550, 120.591]</div>
+                            <div class="geo-widget-pill" id="scalePill">500 m</div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
+			<!-- VIEW 6: ANALYTICS & REPORTS -->
 			<section class="admin-view" id="view-analytics" hidden>
 				<div class="section-heading"><div><h2>Analytics &amp; Official Reports</h2><p>Explore incident patterns and prepare clear, system-generated reports from available case records.</p></div><button type="button" class="button button-primary" data-generate-report style="background: #173d3b; border-color: #173d3b;">Generate Report</button></div>
 				<form class="content-panel analytics-filters" id="analyticsFilters">
@@ -548,6 +691,20 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
         <div id="caseDetails" class="detail-content"></div>
         <div class="dialog-actions">
             <button class="button button-quiet" type="button" data-close-dialog>Close</button>
+        </div>
+    </dialog>
+
+    <!-- MAP LAYERS MODAL -->
+    <dialog class="admin-dialog" id="mapLayersDialog" style="width: 480px; max-width: 95vw; background: #172b35; color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 20px;">
+        <div class="dialog-heading" style="border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #fff;">Map Layers</h3>
+            <button class="icon-button" type="button" data-close-layers aria-label="Close" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">×</button>
+        </div>
+        <div style="min-height: 180px; display: grid; place-items: center; color: #8a9b99; font-size: 13px;">
+            <p>No map layers configured yet.</p>
+        </div>
+        <div class="dialog-actions" style="margin-top: 16px; text-align: right;">
+            <button class="button button-quiet" type="button" data-close-layers style="background: #223c47; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Done</button>
         </div>
     </dialog>
 

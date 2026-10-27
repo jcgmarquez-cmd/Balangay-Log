@@ -159,6 +159,10 @@ try {
     }
 
     $isMultipart = str_contains($_SERVER['CONTENT_TYPE'] ?? '', 'multipart/form-data');
+    // A form upload larger than post_max_size arrives empty; say so instead of failing with a vague error.
+    if ($isMultipart && empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+        residentRespond(['success' => false, 'message' => 'The upload was too large for the server. Try fewer or smaller photos.'], 413);
+    }
     $input = $isMultipart ? $_POST : json_decode(file_get_contents('php://input'), true);
     if (!is_array($input)) {
         residentRespond(['success' => false, 'message' => 'Invalid request payload.'], 400);
@@ -218,6 +222,11 @@ try {
             $dStmt->execute([(int)$case['id']]);
             $dispatchLogs = $dStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
+            // These were used below but never defined (PHP warning that breaks the JSON). Empty until real queries are added.
+            $findings = [];
+            $resolutions = [];
+            $closures = [];
+
             residentRespond([
                 'success' => true,
                 'case' => $case,
@@ -246,26 +255,22 @@ case 'incident_create':
             $locationDetails = trim("{$houseNo} {$street}");
             $fullNarrative = $narrative . ($locationDetails ? "\n[Landmark/Street: {$locationDetails}]" : '');
 
-            // Call encode_case_run directly with proper online portal flags
-            $r = encode_case_run([
-                'complainant_name'      => $complainant,
-                'complainant_phone'     => $phone,
-                'purok'                 => $purok,
-                'street_address'        => $street,
-                'narrative_description' => $fullNarrative,
-                'incident_type'         => $category,
-            ], [
-                'id'        => $userId,
-                'full_name' => $complainant,
-                'role'      => 'RESIDENT'
-            ], [
-                'online'    => true,
-                'scenario'  => 'ONLINE_PORTAL'
-            ]);
+            $r = online_case_run([
+                'complainant' => $complainant,
+                'phone'       => $phone,
+                'purok'       => $purok,
+                'category'    => $category,
+                'narrative'   => $fullNarrative,
+                'priority'    => $priority,
+                'street_address' => $locationDetails,
+            ], $userId, $_FILES['photos'] ?? null);
 
-            if (isset($r['status']) && $r['status'] === 200) {
-                $refNum = $r['body']['reference_number'] ?? 'recorded';
-                residentRespond(['success' => true, 'message' => "Incident reported successfully. Tracking code: {$refNum}"]);
+            if ($r['status'] === 200) {
+                $msg = "Incident reported successfully. Tracking code: {$r['body']['reference_number']}";
+                if (!empty($r['body']['photo_warnings'])) {
+                    $msg .= '. Some photos were not saved: ' . implode('; ', array_slice($r['body']['photo_warnings'], 0, 3)) . '.';
+                }
+                residentRespond(['success' => true, 'message' => $msg]);
             }
             residentRespond($r['body'] ?? ['success' => false, 'message' => 'Could not save the incident. Nothing was recorded.'], $r['status'] ?? 500);
 
@@ -281,7 +286,7 @@ case 'incident_create':
                 residentRespond(['success' => false, 'message' => 'Passwords do not match.'], 422);
             }
 
-            $passStmt = $pdo->prepare('SELECT password FROM users WHERE id = ? LIMIT 1');
+            $passStmt = $pdo->prepare('SELECT password_hash FROM users WHERE id = ? LIMIT 1');
             $passStmt->execute([$userId]);
             $hash = (string) $passStmt->fetchColumn();
 
@@ -289,7 +294,7 @@ case 'incident_create':
                 residentRespond(['success' => false, 'message' => 'Current password incorrect.'], 422);
             }
 
-            $upPass = $pdo->prepare('UPDATE users SET password = ? WHERE id = ?');
+            $upPass = $pdo->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
             $upPass->execute([password_hash($new, PASSWORD_DEFAULT), $userId]);
 
             residentRespond(['success' => true, 'message' => 'Password successfully updated.']);

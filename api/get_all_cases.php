@@ -13,7 +13,6 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
-    // Fetch ALL details for the inventory dropdowns
     $stmt = $pdo->query("SELECT * FROM incident_reports ORDER BY created_at DESC");
     $cases = $stmt->fetchAll();
 

@@ -389,7 +389,7 @@ if (!$initials) $initials = 'OF';
             <div class="sidebar-header-row">
                 <a class="admin-brand" href="captain_dashboard.php" aria-label="BalangayLog Executive Overview">
                 <span class="admin-brand-mark" style="background: transparent; overflow: hidden; display: grid; place-items: center;">
-                  <img src="assets/balangaylog-transparent.png" alt="Barangay Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                  <img src="assets/balangaylog-logo.png" alt="Barangay Logo" style="width: 100%; height: 100%; object-fit: contain;">
                 </span>
                 <span><strong>BalangayLog</strong><small>BARANGAY DUALE</small></span>
             </a>
@@ -412,7 +412,7 @@ if (!$initials) $initials = 'OF';
                 </span>
             </div>
 
-   
+            <p class="eyebrow sidebar-section-label">OPERATIONS</p>
             <nav class="admin-nav" aria-label="Officer Operations Views">
                 <button class="admin-nav-link is-active" type="button" data-view="dashboard">
                     <span class="nav-symbol">▦</span>Dashboard
@@ -934,6 +934,13 @@ if (!$initials) $initials = 'OF';
                     <div>
                         <label for="narrativeDescriptionInput">Blotter Narrative &amp; Facts *</label>
                         <textarea id="narrativeDescriptionInput" name="narrative_description" rows="5" required placeholder="Type the incident narrative facts here. The AI will evaluate the details to automatically categorize and assign priority..."></textarea>
+                    </div>
+
+                    <div style="margin-top: 12px;">
+                        <label for="evidencePhotosInput">Photos (optional)</label>
+                        <input type="file" id="evidencePhotosInput" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple>
+                        <div id="evidencePreview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"></div>
+                        <p id="evidenceHint" style="font-size: 11px; color: var(--muted); margin: 6px 0 0;">Up to 4 photos (JPG, PNG or WebP). Large photos are resized automatically.</p>
                     </div>
 
                     <input type="hidden" name="incident_type" id="aiGeneratedCategoryInput" value="General Incident">

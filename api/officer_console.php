@@ -516,6 +516,12 @@ try {
         officerRespond(['success' => false, 'message' => 'Method not allowed.'], 405);
     }
 
+    // A form upload larger than post_max_size arrives empty; say so instead of failing with a vague error.
+    if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0
+        && stripos((string) ($_SERVER['CONTENT_TYPE'] ?? ''), 'multipart/form-data') !== false) {
+        officerRespond(['success' => false, 'message' => 'The upload was too large for the server. Try fewer or smaller photos.'], 413);
+    }
+
     $rawInput = file_get_contents('php://input');
     $jsonDecoded = json_decode($rawInput, true);
     $input = is_array($jsonDecoded) ? $jsonDecoded : $_POST;
@@ -1533,10 +1539,9 @@ try {
             ]);
 
         case 'encode_case':
-            $narrative = trim((string) ($input['narrative_description'] ?? $input['narrative'] ?? ''));
-            if ($narrative === '') {
-                officerRespond(['success' => false, 'message' => 'Narrative description is required.'], 400);
-            }
+            require_once __DIR__ . '/../lib/case_intake.php';
+                $r = encode_case_run($input, ['id' => $actorId, 'full_name' => $actorName], ['photos' => $_FILES['photos'] ?? null]);
+                    officerRespond($r['body'], $r['status']);
 
             $analysis = [
                 'incident_type'     => 'General Incident',
@@ -1633,6 +1638,73 @@ try {
                 if ($pdo->inTransaction()) $pdo->rollBack();
                 throw $e;
             }
+
+        case 'profile_update':
+            $name = trim((string) ($input['full_name'] ?? ''));
+            $contact = trim((string) ($input['contact_number'] ?? ''));
+
+            if ($name === '') {
+                officerRespond(['success' => false, 'message' => 'Full name cannot be blank.'], 422);
+            }
+
+            $picturePath = null;
+            if (!empty($_FILES['profile_picture']['tmp_name'])) {
+                $picture = $_FILES['profile_picture'];
+                if ($picture['error'] !== UPLOAD_ERR_OK || $picture['size'] > 2 * 1024 * 1024) {
+                    officerRespond(['success' => false, 'message' => 'Profile picture must be smaller than 2 MB.'], 422);
+                }
+
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $mime = $finfo->file($picture['tmp_name']);
+                $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+                if (!isset($extensions[$mime])) {
+                    officerRespond(['success' => false, 'message' => 'Use a JPG, PNG, or WebP profile picture.'], 422);
+                }
+
+                $directory = __DIR__ . '/../uploads/profiles';
+                if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+                    officerRespond(['success' => false, 'message' => 'Could not create profile images directory.'], 500);
+                }
+
+                $filename = 'officer_' . $actorId . '_' . bin2hex(random_bytes(6)) . '.' . $extensions[$mime];
+                if (!move_uploaded_file($picture['tmp_name'], $directory . '/' . $filename)) {
+                    officerRespond(['success' => false, 'message' => 'Could not save the profile picture.'], 500);
+                }
+                $picturePath = 'uploads/profiles/' . $filename;
+            }
+
+            if ($picturePath !== null) {
+                $stmt = $pdo->prepare('UPDATE users SET full_name = ?, contact_number = ?, profile_picture = ? WHERE id = ?');
+                $stmt->execute([$name, $contact, $picturePath, $actorId]);
+            } else {
+                $stmt = $pdo->prepare('UPDATE users SET full_name = ?, contact_number = ? WHERE id = ?');
+                $stmt->execute([$name, $contact, $actorId]);
+            }
+
+            $_SESSION['full_name'] = $name;
+            officerRespond(['success' => true, 'message' => 'Profile information updated successfully.']);
+
+        case 'password_update':
+            $currentPassword = (string) ($input['current_password'] ?? '');
+            $newPassword = (string) ($input['new_password'] ?? '');
+            $confirmPassword = (string) ($input['confirm_password'] ?? '');
+
+            if (strlen($newPassword) < 8 || $newPassword !== $confirmPassword) {
+                officerRespond(['success' => false, 'message' => 'New passwords must match and be at least 8 characters.'], 422);
+            }
+
+            $stmt = $pdo->prepare('SELECT password_hash FROM users WHERE id = ?');
+            $stmt->execute([$actorId]);
+            $hash = (string) $stmt->fetchColumn();
+
+            if (!password_verify($currentPassword, $hash)) {
+                officerRespond(['success' => false, 'message' => 'Current password is incorrect.'], 422);
+            }
+
+            $stmt = $pdo->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+            $stmt->execute([password_hash($newPassword, PASSWORD_DEFAULT), $actorId]);
+
+            officerRespond(['success' => true, 'message' => 'Password changed successfully.']);
 
         default:
             officerRespond(['success' => false, 'message' => 'Unknown officer action.'], 405);
