@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../auth.php';
+require_once __DIR__ . '/../lib/geo_helpers.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -148,19 +149,33 @@ try {
             adminRespond(['success' => true, 'message' => 'Password reset. Share the temporary password securely.']);
 
         case 'parameter_add':
-            $table = parameterTable($input['type'] ?? '');
-            $name = requiredText($input, 'name', 100);
-            $stmt = $pdo->prepare("INSERT INTO {$table} (name, is_active) VALUES (?, 1)");
-            $stmt->execute([$name]);
+            $type = (string) ($input['type'] ?? '');
+            $table = parameterTable($type);
+            $name = requiredText($input, 'name', $type === 'purok' ? 60 : 100);
+            if ($type === 'purok') {
+                [$latitude, $longitude] = parameterCenter($input);
+                $stmt = $pdo->prepare("INSERT INTO {$table} (name, center_lat, center_lng, is_active) VALUES (?, ?, ?, 1)");
+                $stmt->execute([$name, $latitude, $longitude]);
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO {$table} (name, is_active) VALUES (?, 1)");
+                $stmt->execute([$name]);
+            }
             logAudit('SYSTEM_PARAMETER_ADDED', ['type' => $input['type'], 'name' => $name], $actorId);
-            adminRespond(['success' => true, 'message' => 'System parameter added.']);
+            adminRespond(['success' => true, 'message' => $type === 'purok' ? 'Location added and available across the system.' : 'System parameter added.']);
 
         case 'parameter_update':
             requireRecordId($id);
-            $table = parameterTable($input['type'] ?? '');
-            $name = requiredText($input, 'name', 100);
-            $stmt = $pdo->prepare("UPDATE {$table} SET name = ? WHERE id = ?");
-            $stmt->execute([$name, $id]);
+            $type = (string) ($input['type'] ?? '');
+            $table = parameterTable($type);
+            $name = requiredText($input, 'name', $type === 'purok' ? 60 : 100);
+            if ($type === 'purok') {
+                [$latitude, $longitude] = parameterCenter($input);
+                $stmt = $pdo->prepare("UPDATE {$table} SET name = ?, center_lat = ?, center_lng = ? WHERE id = ?");
+                $stmt->execute([$name, $latitude, $longitude, $id]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE {$table} SET name = ? WHERE id = ?");
+                $stmt->execute([$name, $id]);
+            }
             logAudit('SYSTEM_PARAMETER_UPDATED', ['type' => $input['type'], 'name' => $name], $actorId);
             adminRespond(['success' => true, 'message' => 'System parameter updated.']);
 
@@ -365,6 +380,18 @@ function parameterTable(string $type): string
     $tables = ['purok' => 'system_puroks', 'category' => 'incident_categories'];
     if (!isset($tables[$type])) adminRespond(['success' => false, 'message' => 'Invalid parameter type.'], 422);
     return $tables[$type];
+}
+
+function parameterCenter(array $input): array
+{
+    $latitude = trim((string) ($input['center_lat'] ?? ''));
+    $longitude = trim((string) ($input['center_lng'] ?? ''));
+    if ($latitude === '' && $longitude === '') return [null, null];
+    if ($latitude === '' || $longitude === '' || !is_numeric($latitude) || !is_numeric($longitude)
+        || !loc_in_barangay($latitude, $longitude)) {
+        adminRespond(['success' => false, 'message' => 'Enter both map coordinates within Barangay Duale.'], 422);
+    }
+    return [(float) $latitude, (float) $longitude];
 }
 
 function addEquipmentHistory(PDO $pdo, int $equipmentId, int $actorId, string $action, string $details): void

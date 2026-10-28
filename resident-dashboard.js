@@ -84,6 +84,25 @@ async function requestResident(action, payload = {}, options = {}) {
     return result;
 }
 
+async function loadManagedLocations() {
+    const select = document.getElementById('purokSelect');
+    if (!select) return;
+    try {
+        const response = await fetch('api/get_system_parameters.php', { credentials: 'same-origin' });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Locations could not be loaded.');
+        const currentValue = select.dataset.currentValue || select.value;
+        select.replaceChildren(new Option('Select Purok', ''));
+        result.puroks.forEach((purok) => select.add(new Option(purok, purok)));
+        if (result.puroks.includes(currentValue)) select.value = currentValue;
+    } catch (error) {
+        select.disabled = true;
+        showNotice('Unable to load locations. Please refresh the page.', true);
+        console.error('Could not load managed locations:', error);
+    }
+}
+loadManagedLocations();
+
 function setView(view) {
     if (!viewTitles[view]) return;
     navLinks.forEach((link) => link.classList.toggle('is-active', link.dataset.view === view));

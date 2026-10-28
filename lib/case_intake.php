@@ -59,6 +59,11 @@ function encode_case_run(array $input, array $actor, array $opts = []): array {
     if (!in_array($scenarioType, ['WALK_IN', 'ONLINE_PORTAL', 'EMERGENCY'], true)) $scenarioType = 'WALK_IN';
     if (!empty($opts['scenario'])) $scenarioType = (string) $opts['scenario'];
 
+    $pdo = getDatabaseConnection();
+    $locationStmt = $pdo->prepare('SELECT 1 FROM system_puroks WHERE name = ? AND is_active = 1 LIMIT 1');
+    $locationStmt->execute([$purok]);
+    if (!$locationStmt->fetchColumn()) return $err(422, 'Please select an active location from the list.');
+
     // ---- Agent 1: analysis (any network call happens BEFORE the transaction) ----
     $t = triage_case($narrative, $hintType);
     $a = $t['analysis'];
@@ -121,7 +126,6 @@ function encode_case_run(array $input, array $actor, array $opts = []): array {
     $score  = $t['score'];
 
     // ---- One transaction: case + parties + milestone + audit + outbox ----
-    $pdo = getDatabaseConnection();
     // Decide where this case is plotted (walk-in and online alike). Any network lookup happens here, before the transaction opens.
     $loc = resolve_incident_location($pdo, $street, $purok, $lat, $lng);
     $lat = $loc['lat'];

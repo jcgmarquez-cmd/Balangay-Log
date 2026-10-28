@@ -121,8 +121,10 @@ function renderUsers() {
 
 function renderParameters(type, items) {
     const target = document.getElementById(type === 'purok' ? 'purokList' : 'categoryList');
-    target.innerHTML = items.map((item) => `<div class="parameter-row ${Number(item.is_active) ? '' : 'is-inactive'}">
-        <input aria-label="${type === 'purok' ? 'Purok' : 'Category'} name" value="${escapeHtml(item.name)}" data-parameter-name="${item.id}" data-parameter-type="${type}" ${Number(item.is_active) ? '' : 'disabled'}>
+    target.innerHTML = items.map((item) => `<div class="parameter-row ${type === 'purok' ? 'parameter-row--location' : ''} ${Number(item.is_active) ? '' : 'is-inactive'}">
+        <input aria-label="${type === 'purok' ? 'Location' : 'Category'} name" value="${escapeHtml(item.name)}" data-parameter-name="${item.id}" data-parameter-type="${type}" ${Number(item.is_active) ? '' : 'disabled'}>
+        ${type === 'purok' ? `<input aria-label="Latitude for ${escapeHtml(item.name)}" type="number" step="any" min="14.2" max="14.8" placeholder="Latitude" value="${escapeHtml(item.center_lat ?? '')}" data-parameter-lat="${item.id}" ${Number(item.is_active) ? '' : 'disabled'}>
+        <input aria-label="Longitude for ${escapeHtml(item.name)}" type="number" step="any" min="120.3" max="121" placeholder="Longitude" value="${escapeHtml(item.center_lng ?? '')}" data-parameter-lng="${item.id}" ${Number(item.is_active) ? '' : 'disabled'}>` : ''}
         ${Number(item.usage_count) ? `<span class="table-secondary">${item.usage_count} cases</span>` : '<span></span>'}
         <div class="row-actions">${Number(item.is_active) ? `<button class="small-button" data-save-parameter="${item.id}" data-type="${type}">Save</button><button class="small-button is-danger" data-deactivate-parameter="${item.id}" data-type="${type}">Deactivate</button>` : statusPill('INACTIVE')}</div>
     </div>`).join('') || '<p class="empty-message">No active values.</p>';
@@ -371,9 +373,15 @@ document.getElementById('reasonForm')?.addEventListener('submit', async (event) 
 });
 
 async function addParameter(type, form) {
-    const name = new FormData(form).get('name')?.toString().trim();
+    const formData = new FormData(form);
+    const name = formData.get('name')?.toString().trim();
     if (!name) return;
-    try { const result = await requestAdmin('parameter_add', { type, name }); form.reset(); showNotice(result.message); await refreshData(); }
+    const payload = { type, name };
+    if (type === 'purok') {
+        payload.center_lat = formData.get('center_lat')?.toString().trim() || '';
+        payload.center_lng = formData.get('center_lng')?.toString().trim() || '';
+    }
+    try { const result = await requestAdmin('parameter_add', payload); form.reset(); showNotice(result.message); await refreshData(); }
     catch (error) { showNotice(error.message, true); }
 }
 document.getElementById('addPurokForm')?.addEventListener('submit', (event) => { event.preventDefault(); addParameter('purok', event.currentTarget); });
@@ -399,7 +407,12 @@ document.addEventListener('click', async (event) => {
         if (target.dataset.saveParameter) {
             const id = target.dataset.saveParameter;
             const name = document.querySelector(`[data-parameter-name="${id}"]`).value.trim();
-            const result = await requestAdmin('parameter_update', { id, type: target.dataset.type, name }); showNotice(result.message); await refreshData();
+            const payload = { id, type: target.dataset.type, name };
+            if (target.dataset.type === 'purok') {
+                payload.center_lat = document.querySelector(`[data-parameter-lat="${id}"]`).value.trim();
+                payload.center_lng = document.querySelector(`[data-parameter-lng="${id}"]`).value.trim();
+            }
+            const result = await requestAdmin('parameter_update', payload); showNotice(result.message); await refreshData();
         }
         if (target.dataset.deactivateParameter && window.confirm('Deactivate this value? Existing cases will keep their saved value.')) {
             const result = await requestAdmin('parameter_deactivate', { id: target.dataset.deactivateParameter, type: target.dataset.type }); showNotice(result.message); await refreshData();

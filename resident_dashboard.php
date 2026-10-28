@@ -409,15 +409,8 @@ if (!$initials) $initials = 'JD';
                     <div class="form-row" style="margin-top: 10px;">
                         <div>
                             <label for="purokSelect">Purok / Zone *</label>
-                            <select id="purokSelect" name="purok" required autocomplete="address-level3">
+                            <select id="purokSelect" name="purok" data-current-value="<?= $purok ?>" required autocomplete="address-level3">
                                 <option value="">Select Purok</option>
-                                <option value="Purok 1">Purok 1</option>
-                                <option value="Purok 2" <?= $purok === 'Purok 2' ? 'selected' : '' ?>>Purok 2</option>
-                                <option value="Purok 3" <?= $purok === 'Purok 3' ? 'selected' : '' ?>>Purok 3</option>
-                                <option value="Purok 4">Purok 4</option>
-                                <option value="Purok 5">Purok 5</option>
-                                <option value="Purok 6">Purok 6</option>
-                                <option value="Purok 7">Purok 7</option>
                             </select>
                         </div>
                         <div>

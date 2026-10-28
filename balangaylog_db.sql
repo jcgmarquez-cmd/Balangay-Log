@@ -660,6 +660,8 @@ CREATE TABLE `lupon_cases` (
 CREATE TABLE `system_puroks` (
   `id` int(10) UNSIGNED NOT NULL,
   `name` varchar(100) NOT NULL,
+  `center_lat` decimal(10,8) DEFAULT NULL,
+  `center_lng` decimal(11,8) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()

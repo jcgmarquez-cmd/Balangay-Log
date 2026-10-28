@@ -384,28 +384,16 @@
                 res = await fetch('./api/get_heatmap_data.php');
             }
 
+            if (!res.ok) throw new Error('The heatmap API returned an unsuccessful response.');
             const data = await res.json();
-            
-            if (data.status === 'success' || data.success) {
-                incidentsCache = data.data || [];
-                
-                if (incidentsCache.length === 0) {
-                    incidentsCache = [
-                        { id: 1, title: 'Robbery in Camias Street', lat: 14.5505, lng: 120.5912, intensity: 1.0, severity: 'critical', purok: 'Sitio Peas', date: '2026-10-21', category: 'Robbery', officer: 'Officer C. Santos', observations: 'Verified forced entry through back window.' },
-                        { id: 2, title: 'Physical Altercation near School', lat: 14.5495, lng: 120.5925, intensity: 0.7, severity: 'high', purok: 'Duale Proper', date: '2026-10-20', category: 'Altercation', officer: 'Officer M. Reyes', observations: 'Resolved on site.' },
-                        { id: 3, title: 'Noise Disturbance / Karaoke', lat: 14.5478, lng: 120.5890, intensity: 0.4, severity: 'low', purok: 'St. Claire Subdivision', date: '2026-10-19', category: 'Disturbance', officer: 'Desk Officer', observations: 'Warned residents.' }
-                    ];
-                }
-
-                addMapLayers(incidentsCache);
-                populateActiveAlertsList(incidentsCache);
-                updateWarningCount(incidentsCache);
-            }
+            if (!(data.status === 'success' || data.success)) throw new Error(data.message || 'Heatmap data could not be loaded.');
+            incidentsCache = data.data || [];
+            addMapLayers(incidentsCache);
+            populateActiveAlertsList(incidentsCache);
+            updateWarningCount(incidentsCache);
         } catch (e) {
             console.error('Failed to load Mapbox GIS data:', e);
-            incidentsCache = [
-                { id: 1, title: 'Robbery in Camias Street', lat: 14.5505, lng: 120.5912, intensity: 1.0, severity: 'critical', purok: 'Sitio Peas', date: '2026-10-21', category: 'Robbery', officer: 'Officer C. Santos', observations: 'Verified forced entry through back window.' }
-            ];
+            incidentsCache = [];
             addMapLayers(incidentsCache);
             populateActiveAlertsList(incidentsCache);
             updateWarningCount(incidentsCache);
@@ -964,4 +952,8 @@
     if (targetNode) {
         observer.observe(targetNode, { attributes: true, attributeFilter: ['hidden'] });
     }
+    window.setInterval(() => {
+        const heatmapView = document.getElementById('view-heatmap');
+        if (heatmapView && !heatmapView.hasAttribute('hidden')) fetchGeoData();
+    }, 30000);
 })();
