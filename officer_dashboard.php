@@ -366,6 +366,20 @@ if (!$initials) $initials = 'OF';
             color: #ffffff;
         }
     </style>
+    <style>
+        /* Collapse arrow: vertically centered on the user pill, straddling the sidebar edge */
+        .identity-wrap { position: relative; }
+        .identity-wrap > .sidebar-collapse-btn {
+            position: absolute;
+            top: 50%;
+            right: -36px;      /* pill right edge -> sidebar edge (~20px padding) + half the button (16px) */
+            left: auto;
+            bottom: auto;
+            translate: 0 -50%; /* "translate" (not "transform") so any existing rotate/flip transform still works */
+            margin: 0;
+            z-index: 5;
+        }
+    </style>
 </head>
 <body>
     <div class="admin-shell">
@@ -394,22 +408,24 @@ if (!$initials) $initials = 'OF';
                 <span><strong>BalangayLog</strong><small>BARANGAY DUALE</small></span>
             </a>
                 <div class="sidebar-header-actions">
-                    <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">
-                        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-                    </button>
                     <button class="sidebar-close-btn" id="sidebarCloseBtn" type="button" aria-label="Close Navigation">×</button>
                 </div>
             </div>
 
-            <div class="admin-identity">
-                <span class="identity-avatar" id="officerAvatar" style="position: relative; overflow: hidden;">
-                    <span id="officerInitials"><?= $initials ?></span>
-                    <img id="officerProfilePic" src="<?= $profilePic ?? '' ?>" alt="Officer Picture" <?= $profilePic ? '' : 'hidden' ?> style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
-                </span>
-                <span>
-                    <strong id="officerDisplayName"><?= $officerName ?></strong>
-                    <small><?= $roleLabel ?></small>
-                </span>
+            <div class="identity-wrap">
+                <div class="admin-identity">
+                    <span class="identity-avatar" id="officerAvatar" style="position: relative; overflow: hidden;">
+                        <span id="officerInitials"><?= $initials ?></span>
+                        <img id="officerProfilePic" src="<?= $profilePic ?? '' ?>" alt="Officer Picture" <?= $profilePic ? '' : 'hidden' ?> style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                    </span>
+                    <span>
+                        <strong id="officerDisplayName"><?= $officerName ?></strong>
+                        <small><?= $roleLabel ?></small>
+                    </span>
+                </div>
+                <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">
+                        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+                    </button>
             </div>
 
             <p class="eyebrow sidebar-section-label">OPERATIONS</p>
@@ -1199,5 +1215,18 @@ if (!$initials) $initials = 'OF';
     <script src="sidebar.js?v=<?= time() ?>"></script>
     <script src="officer-ai.js?v=<?= time() ?>"></script>
     <script src="officer-dashboard.js?v=<?= time() ?>"></script>
+    <script>
+    /* Keep the collapse arrow vertically centered on the user pill, expanded or collapsed */
+    (function () {
+        var btn = document.getElementById('sidebarCollapseBtn');
+        var pill = document.querySelector('.identity-wrap .admin-identity');
+        if (!btn || !pill) return;
+        function center() { btn.style.top = (pill.offsetTop + pill.offsetHeight / 2) + 'px'; }
+        center();
+        window.addEventListener('resize', center);
+        window.addEventListener('load', center);
+        if (window.ResizeObserver) new ResizeObserver(center).observe(pill);
+    })();
+    </script>
 </body>
 </html>

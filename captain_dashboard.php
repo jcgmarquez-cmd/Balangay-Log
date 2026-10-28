@@ -35,6 +35,20 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
     ?>
     <script>window.MAPBOX_PUBLIC_TOKEN = <?= json_encode($mapboxPublicToken) ?>;</script>
     <script src="captain-geo.js?v=<?= time() ?>" defer></script>
+    <style>
+        /* Collapse arrow: vertically centered on the user pill, straddling the sidebar edge */
+        .identity-wrap { position: relative; }
+        .identity-wrap > .sidebar-collapse-btn {
+            position: absolute;
+            top: 50%;
+            right: -36px;      /* pill right edge -> sidebar edge (~20px padding) + half the button (16px) */
+            left: auto;
+            bottom: auto;
+            translate: 0 -50%; /* "translate" (not "transform") so any existing rotate/flip transform still works */
+            margin: 0;
+            z-index: 5;
+        }
+    </style>
 </head>
 <body>
 	<div class="admin-shell">
@@ -61,15 +75,17 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
                 <span><strong>BalangayLog</strong><small>BARANGAY DUALE</small></span>
             </a>
 				<div class="sidebar-header-actions">
-					<button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">
-						<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-					</button>
 					<button class="sidebar-close-btn" id="sidebarCloseBtn" type="button" aria-label="Close Navigation">×</button>
 				</div>
 			</div>
-			<div class="admin-identity">
-				<span class="identity-avatar" id="captainAvatar">CP<img id="captainPicture" alt="" hidden></span>
-				<span><strong id="captainSideName">Capt. <?= $captainName ?></strong><small>Punong Barangay</small></span>
+			<div class="identity-wrap">
+    			<div class="admin-identity">
+    				<span class="identity-avatar" id="captainAvatar">CP<img id="captainPicture" alt="" hidden></span>
+    				<span><strong id="captainSideName">Capt. <?= $captainName ?></strong><small>Punong Barangay</small></span>
+    			</div>
+			    <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">
+						<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+					</button>
 			</div>
 
 			<nav class="admin-nav" aria-label="Captain navigation">
@@ -95,9 +111,6 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
                 <div>
                     <h1 id="viewTitle" style="font-size: 22px; font-weight: 800; margin: 0; font-family: 'Manrope', sans-serif;">Executive Overview</h1>
                     <p style="margin: 3px 0 0; color: var(--muted); font-size: 12px;">Peace and order, executive review, and municipal reporting</p>
-                </div>
-                <div class="topbar-right-controls" style="display: flex; align-items: center; gap: 12px;">
-                    <button type="button" class="button button-primary" data-open-advisory style="background: #173d3b; border-color: #173d3b;">+ Issue Barangay Advisory</button>
                 </div>
             </header>
 
@@ -206,7 +219,6 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
                         </div>
                     </div>
                     <div class="quick-actions">
-                        <button type="button" class="button button-primary" data-open-advisory style="background: #173d3b; border-color: #173d3b;">Issue Barangay Advisory</button>
                         <button type="button" class="button button-quiet" data-generate-report>Generate Monthly DILG Report</button>
                         <button type="button" class="button button-quiet" data-open-view="lupon">Review Lupon Referrals</button>
                     </div>
@@ -243,6 +255,7 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
                                     <th>Purok</th>
                                     <th>Priority</th>
                                     <th>Status</th>
+                                    <th>Assigned To</th>
                                     <th>Reported</th>
                                     <th></th>
                                 </tr>
@@ -632,33 +645,6 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
     </div>
 
     <!-- MODALS & DIALOGS -->
-    <dialog class="admin-dialog" id="advisoryDialog">
-        <form id="advisoryForm" method="dialog">
-            <div class="dialog-heading">
-                <div>
-                    <p class="eyebrow">BARANGAY ADVISORY</p>
-                    <h2>Issue advisory</h2>
-                </div>
-                <button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button>
-            </div>
-            <label>Title
-                <input name="title" maxlength="120" required>
-            </label>
-            <label>Applies to
-                <select name="purok_id" id="advisoryPurok">
-                    <option value="">Whole barangay</option>
-                </select>
-            </label>
-            <label>Message
-                <textarea name="body" rows="5" required></textarea>
-            </label>
-            <div class="dialog-actions">
-                <button class="button button-quiet" type="button" data-close-dialog>Cancel</button>
-                <button class="button button-primary" type="submit" style="background: #173d3b; border-color: #173d3b;">Publish advisory</button>
-            </div>
-        </form>
-    </dialog>
-
     <dialog class="admin-dialog" id="endorseDialog">
         <form id="endorseForm" method="dialog">
             <div class="dialog-heading">
@@ -710,5 +696,18 @@ $csrfToken = $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
 
 	<script src="sidebar.js?v=<?= time() ?>" defer></script>
 	<script src="captain-dashboard.js?v=<?= time() ?>" defer></script>
+    <script>
+    /* Keep the collapse arrow vertically centered on the user pill, expanded or collapsed */
+    (function () {
+        var btn = document.getElementById('sidebarCollapseBtn');
+        var pill = document.querySelector('.identity-wrap .admin-identity');
+        if (!btn || !pill) return;
+        function center() { btn.style.top = (pill.offsetTop + pill.offsetHeight / 2) + 'px'; }
+        center();
+        window.addEventListener('resize', center);
+        window.addEventListener('load', center);
+        if (window.ResizeObserver) new ResizeObserver(center).observe(pill);
+    })();
+    </script>
 </body>
 </html>

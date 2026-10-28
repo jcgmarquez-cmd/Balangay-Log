@@ -39,6 +39,38 @@ if (!$initials) $initials = 'JD';
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="admin-dashboard.css?v=<?= time() ?>" />
+    <style>
+        /* Collapse arrow: vertically centered on the user pill, straddling the sidebar edge */
+        .identity-wrap { position: relative; }
+        .identity-wrap > .sidebar-collapse-btn {
+            position: absolute;
+            top: 50%;
+            right: -36px;      /* pill right edge -> sidebar edge (~20px padding) + half the button (16px) */
+            left: auto;
+            bottom: auto;
+            translate: 0 -50%; /* "translate" (not "transform") so any existing rotate/flip transform still works */
+            margin: 0;
+            z-index: 5;
+        }
+    </style>
+    <style>
+        /* Status pills: identical size in every row, any status */
+        #allReportRows td:nth-child(5) > *,
+        #overviewRecentRows td:nth-child(5) > * {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            width: 116px;
+            height: 32px;
+            padding: 0 10px;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
     <div class="admin-shell">
@@ -67,19 +99,21 @@ if (!$initials) $initials = 'JD';
                 <span><strong>BalangayLog</strong><small>BARANGAY DUALE</small></span>
             </a>
                 <div class="sidebar-header-actions">
-                    <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">
-                        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-                    </button>
                     <button class="sidebar-close-btn" id="sidebarCloseBtn" type="button" aria-label="Close Navigation">×</button>
                 </div>
             </div>
 
-            <div class="admin-identity">
-                <span class="identity-avatar" id="residentAvatar" style="position: relative; overflow: hidden;">
-                    <span id="residentSidebarInitials" style="<?= $profilePic ? 'display: none;' : '' ?>"><?= $initials ?></span>
-                    <img id="residentSidebarPic" src="<?= $profilePic ?? '' ?>" alt="Resident Avatar" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; <?= $profilePic ? 'display: block;' : 'display: none;' ?>">
-                </span>
-                <span><strong id="residentName"><?= $residentName ?></strong><small>Verified • <?= $purok ?></small></span>
+            <div class="identity-wrap">
+                <div class="admin-identity">
+                    <span class="identity-avatar" id="residentAvatar" style="position: relative; overflow: hidden;">
+                        <span id="residentSidebarInitials" style="<?= $profilePic ? 'display: none;' : '' ?>"><?= $initials ?></span>
+                        <img id="residentSidebarPic" src="<?= $profilePic ?? '' ?>" alt="Resident Avatar" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; <?= $profilePic ? 'display: block;' : 'display: none;' ?>">
+                    </span>
+                    <span><strong id="residentName"><?= $residentName ?></strong><small>Verified • <?= $purok ?></small></span>
+                </div>
+                <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">
+                        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+                    </button>
             </div>
 
             <nav class="admin-nav" aria-label="Resident Portal Views">
@@ -549,5 +583,18 @@ if (!$initials) $initials = 'JD';
     <script src="sidebar.js?v=<?= time() ?>"></script>
     <script src="officer-ai.js?v=<?= time() ?>"></script>
     <script src="resident-dashboard.js?v=<?= time() ?>"></script>
+    <script>
+    /* Keep the collapse arrow vertically centered on the user pill, expanded or collapsed */
+    (function () {
+        var btn = document.getElementById('sidebarCollapseBtn');
+        var pill = document.querySelector('.identity-wrap .admin-identity');
+        if (!btn || !pill) return;
+        function center() { btn.style.top = (pill.offsetTop + pill.offsetHeight / 2) + 'px'; }
+        center();
+        window.addEventListener('resize', center);
+        window.addEventListener('load', center);
+        if (window.ResizeObserver) new ResizeObserver(center).observe(pill);
+    })();
+    </script>
 </body>
 </html>
