@@ -316,6 +316,32 @@ const priorityPill = p => {
     return k ? `<span class="pill pill-priority-${esc(k)}">${esc(titleCase(p))}</span>` : '—';
 };
 
+/* bordered status badge: same mapping as the Officer dashboard (classes live in admin-dashboard.css) */
+const STATUS_BADGES = {
+    PENDING: ['pending', 'Pending Triage'],
+    UNDER_REVIEW: ['pending', 'Pending Triage'],
+    CRITICAL: ['pending', 'Pending Triage'],
+    IN_PROGRESS: ['in-progress', 'In Progress'],
+    DISPATCHED: ['dispatched', 'Dispatched'],
+    FOR_RESOLUTION: ['resolution', 'Awaiting Resolution'],
+    LUPON: ['resolution', 'Awaiting Resolution'],
+    RESOLVED: ['resolved', 'Resolved'],
+    CLOSED: ['resolved', 'Resolved'],
+    REJECTED: ['rejected', 'Report Rejected']
+};
+const statusPill = s => {
+    const k = up(s);
+    const [cls, label] = STATUS_BADGES[k] || ['unknown', titleCase(k) || 'Unknown'];
+    return `<span class="status-badge status-badge--${esc(cls)}">${esc(label)}</span>`;
+};
+
+/* "Assigned To": the desk officer assigned to the case (name on top), plus the deployed Tanod unit underneath once one is dispatched */
+const assignedCell = r => {
+    const officer = pick(r, 'assigned_officer_name', 'handling_officer', 'desk_officer_name', 'assigned_officer');
+    const unit = pick(r, 'deployed_unit', 'dispatch_unit', 'responders');
+    return `<td class="assigned-cell"><strong>${esc(officer || 'Not assigned')}</strong>${unit ? `<small>${esc(unit)}</small>` : ''}</td>`;
+};
+
 function renderRegistry() {
     const q = ($('caseSearch').value || '').trim().toLowerCase();
     const st = $('caseStatusFilter').value;
@@ -326,7 +352,7 @@ function renderRegistry() {
     });
     $('caseRows').innerHTML = rows.map(r => `<tr>
         <td><strong>${esc(F.ref(r))}</strong></td><td>${esc(F.type(r))}</td><td>${esc(F.purok(r))}</td>
-        <td>${priorityPill(F.priority(r))}</td><td>${esc(statusLabel(F.status(r)))}</td><td>${fmtDate(F.date(r))}</td>
+        <td>${priorityPill(F.priority(r))}</td><td>${statusPill(F.status(r))}</td>${assignedCell(r)}<td>${fmtDate(F.date(r))}</td>
         <td><button type="button" class="small-button" data-case-ref="${esc(F.ref(r))}">View</button></td></tr>`).join('');
     $('caseEmpty').hidden = rows.length > 0;
 }

@@ -1361,7 +1361,7 @@ html[data-theme="dark"] textarea,
 .sidebar-collapse-btn {
     position: absolute;
     z-index: 5;
-    top: 92px; 
+    top: 51px;
     right: -12px;
     width: 26px;
     height: 36px;
@@ -2117,4 +2117,35 @@ td .pill-deactivated {
 table:has(:is(.pill-priority-low, .pill-priority-moderate, .pill-priority-high, .pill-priority-critical, .status-badge, .pill-active, .pill-authorized, .pill-resolved, .pill-pending, .pill-pending_verification, .pill-in-progress, .pill-dispatched, .pill-rejected, .pill-inactive, .pill-deactivated)) :is(th, td) {
     text-align: center !important;
     vertical-align: middle !important;
+}
+
+/* ==========================================================================
+   QA fixes (update 14)
+   ========================================================================== */
+
+/* Light mode: crisp subtitles/descriptions instead of the dimmed --muted tone.
+   data-theme lives on <html>, so the selector is html:not(...), not body:not(...). */
+html:not([data-theme="dark"]) .section-heading p,
+html:not([data-theme="dark"]) .panel-heading p,
+html:not([data-theme="dark"]) .settings-stack p,
+html:not([data-theme="dark"]) .profile-title-block p {
+    color: #3e5258;
+    opacity: 1;
+}
+
+/* Captain registry: "Assigned To" cell (unit on top, handling officer below) */
+.assigned-cell strong,
+.assigned-cell small {
+    display: block;
+    max-width: 180px;
+    margin: 0 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.assigned-cell small {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 11px;
 }
