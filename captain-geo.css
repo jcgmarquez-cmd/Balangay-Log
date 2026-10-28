@@ -300,3 +300,15 @@
 .ew-tab-content {
     animation: fadeIn 0.2s ease-in-out;
 }
+
+/* Fix cropped situation preview images in the map hub */
+.hub-card img, 
+.geo-situation-img, 
+.geo-modal-photo, 
+.situation-card img {
+    width: 100%;
+    height: 220px;
+    object-fit: contain;      /* Changes from 'cover' to 'contain' so the full photo is visible */
+    background-color: #0d171c; /* Adds a clean dark background fill for letterboxed edges */
+    border-radius: 6px;
+}

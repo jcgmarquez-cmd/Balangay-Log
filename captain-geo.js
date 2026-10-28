@@ -852,7 +852,7 @@
 
         const photoHtml = photos.length
             ? `<div style="position: relative; background: #0e1a21; border-radius: 8px; overflow: hidden; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.1);">
-                    <img src="${escapeHtml(photos[currentPhotoIndex])}" alt="Report photo ${currentPhotoIndex + 1}" style="width: 100%; height: 200px; object-fit: cover; display: block;">
+                    <img src="${escapeHtml(photos[currentPhotoIndex])}" alt="Report photo ${currentPhotoIndex + 1}" style="width: 100%; height: 200px; object-fit: contain; display: block;">
                     ${photos.length > 1 ? `
                         <button type="button" data-photo-nav="-1" aria-label="Previous photo" style="${photoArrowStyle} left: 8px;">‹</button>
                         <button type="button" data-photo-nav="1" aria-label="Next photo" style="${photoArrowStyle} right: 8px;">›</button>

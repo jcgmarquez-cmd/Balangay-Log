@@ -115,7 +115,16 @@ try {
 
         $cases = dbRows($db, "SELECT id, reference_number AS case_no, incident_type AS title, complainant_name AS complainant,
                 purok, priority_level AS severity, status, narrative_description AS narrative, {$dateCol} AS incident_datetime,
-                NULLIF(TRIM(assigned_officer_name), '') AS assigned_officer_name, NULLIF(TRIM(deployed_unit), '') AS deployed_unit
+                COALESCE(
+                    NULLIF(NULLIF(TRIM(assigned_officer_name), ''), 'Unassigned'),
+                    (SELECT NULLIF(TRIM(cm.officer_in_charge), '')
+                       FROM case_milestones cm
+                      WHERE cm.incident_id = incident_reports.id
+                        AND cm.status_snapshot IN ('IN_PROGRESS', 'DISPATCHED')
+                        AND TRIM(IFNULL(cm.officer_in_charge, '')) <> ''
+                      ORDER BY cm.created_at ASC, cm.id ASC LIMIT 1)
+                ) AS assigned_officer_name,
+                NULLIF(TRIM(deployed_unit), '') AS deployed_unit
             FROM incident_reports ORDER BY {$dateCol} DESC LIMIT 500");
 
         $endorsements = dbRows($db, "SELECT e.id, e.case_id, e.type, e.referred_at, ir.reference_number AS case_no,
