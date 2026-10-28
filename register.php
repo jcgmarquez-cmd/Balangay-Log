@@ -75,7 +75,11 @@ if (isLoggedIn()) {
                     <div class="register-grid register-grid-single">
                         <div class="form-group form-group--wide">
                             <label for="contact_number">Contact Number</label>
-                            <input type="tel" id="contact_number" name="contact_number" placeholder="+63 9XX XXX XXXX" autocomplete="tel" required aria-describedby="contact_number_error" />
+                            <div class="phone-input-wrapper">
+                                <span class="phone-country-code" aria-hidden="true">+63</span>
+                                <input type="tel" id="contact_number" name="contact_number" placeholder="9XX XXX XXXX" autocomplete="tel-national" inputmode="numeric" maxlength="10" pattern="9[0-9]{9}" title="Enter 10 digits starting with 9." required aria-describedby="contact_number_hint contact_number_error" />
+                            </div>
+                            <small class="field-hint" id="contact_number_hint">Enter 10 digits starting with 9. The +63 country code is included.</small>
                             <small class="field-error" id="contact_number_error"></small>
                         </div>
                         <div class="form-group form-group--wide">
@@ -234,6 +238,8 @@ if (isLoggedIn()) {
                     message = field.type === 'file'
                         ? 'Please choose a file to verify your residency.'
                         : 'This field is required.';
+                } else if (field.id === 'contact_number' && field.validity.patternMismatch) {
+                    message = 'Enter exactly 10 digits starting with 9. The +63 country code is already included.';
                 } else if (field.validity.patternMismatch) {
                     message = 'Use only letters, numbers, periods, underscores, or hyphens.';
                 } else if (field.validity.tooShort) {
@@ -251,6 +257,20 @@ if (isLoggedIn()) {
             setFieldError(field, message);
             return !message;
         }
+
+        const phoneInput = document.getElementById('contact_number');
+        function setPhoneDigits(value) {
+            let digits = value.replace(/\D/g, '');
+            if (digits.startsWith('63')) digits = digits.slice(2);
+            if (digits.startsWith('0')) digits = digits.slice(1);
+            phoneInput.value = digits.slice(0, 10);
+            validateField(phoneInput);
+        }
+        phoneInput.addEventListener('input', () => setPhoneDigits(phoneInput.value));
+        phoneInput.addEventListener('paste', (event) => {
+            event.preventDefault();
+            setPhoneDigits(event.clipboardData.getData('text'));
+        });
 
         function validateStep(stepIndex) {
             const fields = [...steps[stepIndex].querySelectorAll('input, select')].filter((field) => field.required);
@@ -330,14 +350,13 @@ if (isLoggedIn()) {
 
         document.getElementById('requestOtpBtn').addEventListener('click', async function() {
             const phoneInput = document.getElementById('contact_number');
-            const phoneVal = phoneInput.value.trim();
+            const phoneVal = `+63${phoneInput.value.trim()}`;
             const errorElement = document.getElementById('otp_code_error');
             const btn = this;
             
-            if (!phoneVal) {
-                showStep(1); 
+            if (!validateField(phoneInput)) {
+                showStep(1);
                 phoneInput.focus();
-                setFieldError(phoneInput, 'Please provide a contact number before requesting an OTP.');
                 return;
             }
 
@@ -386,13 +405,20 @@ if (isLoggedIn()) {
         });
 
         fetch('api/get_system_parameters.php')
-            .then((response) => response.json())
+            .then(async (response) => {
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load locations.');
+                return result;
+            })
             .then((result) => {
-                if (!result.success) return;
                 const purokSelect = document.getElementById('purok');
                 result.puroks.forEach((purok) => purokSelect.add(new Option(purok, purok)));
             })
-            .catch(() => showError('Unable to load the Purok list. Please refresh the page.'));
+            .catch(() => {
+                const purokSelect = document.getElementById('purok');
+                if (purokSelect) purokSelect.disabled = true;
+                showError('Unable to load the Purok list. Please refresh the page.');
+            });
 
         if (registerForm) {
             registerForm.addEventListener('submit', async function (event) {
@@ -414,7 +440,7 @@ if (isLoggedIn()) {
                     date_of_birth: document.getElementById('date_of_birth').value,
                     address: document.getElementById('address').value.trim(),
                     purok: document.getElementById('purok').value.trim(),
-                    contact_number: document.getElementById('contact_number').value.trim(),
+                    contact_number: `+63${document.getElementById('contact_number').value.trim()}`,
                     username: document.getElementById('username').value.trim(),
                     password: document.getElementById('password').value,
                     confirm_password: document.getElementById('confirm_password').value,

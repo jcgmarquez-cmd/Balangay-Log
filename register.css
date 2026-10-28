@@ -122,6 +122,11 @@
 .registration-page-body .form-group input:focus,
 .registration-page-body .form-group select:focus { border-color: #19766c; box-shadow: 0 0 0 3px rgba(25, 118, 108, .12); }
 .registration-page-body .form-group input::placeholder { color: #9aa9a6; }
+.phone-input-wrapper { height: 44px; display: flex; align-items: center; overflow: hidden; border: 1px solid #d6e1df; border-radius: 7px; background: #fff; }
+.phone-input-wrapper:focus-within { border-color: #19766c; box-shadow: 0 0 0 3px rgba(25, 118, 108, .12); }
+.phone-country-code { padding: 0 12px; border-right: 1px solid #e4ecea; color: #36514d; font-size: 13px; font-weight: 700; }
+.registration-page-body .form-group .phone-input-wrapper input { min-width: 0; height: 42px; flex: 1; border: 0; border-radius: 0; box-shadow: none; }
+.registration-page-body .form-group .phone-input-wrapper input:focus { border: 0; box-shadow: none; }
 .registration-page-body .register-grid-single { grid-template-columns: 1fr; }
 .registration-page-body .password-input-wrapper input { padding-right: 48px; }
 .registration-page-body .eye-btn { color: #71847f; }

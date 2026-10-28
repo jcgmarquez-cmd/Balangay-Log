@@ -72,6 +72,13 @@ if ($password !== $confirmPassword) {
 }
 
 $pdo = getDatabaseConnection();
+$locationStmt = $pdo->prepare('SELECT 1 FROM system_puroks WHERE name = ? AND is_active = 1 LIMIT 1');
+$locationStmt->execute([$purok]);
+if (!$locationStmt->fetchColumn()) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Please choose an active Purok from the list.']);
+    exit;
+}
 $contactNumber = '+' . $normalizedPhone;
 if (isRegisteredMobile($pdo, $normalizedPhone)) {
     unset($_SESSION['registration_otp'], $_SESSION['registration_phone']);

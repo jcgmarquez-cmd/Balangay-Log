@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../auth.php';
 require_once __DIR__ . '/triage.php';
 require_once __DIR__ . '/override_gate.php';
+require_once __DIR__ . '/geo_helpers.php';
+require_once __DIR__ . '/case_photos.php';
 
 function intake_pick(array $in, array $keys): string {
     foreach ($keys as $k) {
@@ -31,6 +33,10 @@ function encode_case_run(array $input, array $actor, array $opts = []): array {
     $chosen    = intake_pick($input, ['priorityLevel', 'priority_level', 'priority']);   // optional: officer-chosen priority
     if ($online) $chosen = '';   // residents never choose the priority: the triage decides it from the narrative
 
+    // Capture latitude and longitude coordinates if provided via Geocoding
+    $lat = isset($input['latitude']) && is_numeric($input['latitude']) ? (float)$input['latitude'] : null;
+    $lng = isset($input['longitude']) && is_numeric($input['longitude']) ? (float)$input['longitude'] : null;
+
     // ---- Validation ----
     if ($name === '') $name = 'Walk-in Resident';
     if (mb_strlen($name) > 120)      return $err(422, 'The complainant name is too long (max 120 characters).');
@@ -52,6 +58,11 @@ function encode_case_run(array $input, array $actor, array $opts = []): array {
     $scenarioType = strtoupper(str_replace(' ', '_', (string) preg_replace('/[^A-Za-z0-9 ]/', '', $channel)));
     if (!in_array($scenarioType, ['WALK_IN', 'ONLINE_PORTAL', 'EMERGENCY'], true)) $scenarioType = 'WALK_IN';
     if (!empty($opts['scenario'])) $scenarioType = (string) $opts['scenario'];
+
+    $pdo = getDatabaseConnection();
+    $locationStmt = $pdo->prepare('SELECT 1 FROM system_puroks WHERE name = ? AND is_active = 1 LIMIT 1');
+    $locationStmt->execute([$purok]);
+    if (!$locationStmt->fetchColumn()) return $err(422, 'Please select an active location from the list.');
 
     // ---- Agent 1: analysis (any network call happens BEFORE the transaction) ----
     $t = triage_case($narrative, $hintType);
@@ -115,17 +126,23 @@ function encode_case_run(array $input, array $actor, array $opts = []): array {
     $score  = $t['score'];
 
     // ---- One transaction: case + parties + milestone + audit + outbox ----
-    $pdo = getDatabaseConnection();
+    // Decide where this case is plotted (walk-in and online alike). Any network lookup happens here, before the transaction opens.
+    $loc = resolve_incident_location($pdo, $street, $purok, $lat, $lng);
+    $lat = $loc['lat'];
+    $lng = $loc['lng'];
+    $locAccuracy = $loc['accuracy'];
     $pdo->beginTransaction();
     try {
         $pdo->prepare("INSERT INTO incident_reports
             (reference_number, complainant_name, complainant_phone, incident_type, narrative_description, incident_datetime,
-             purok, ai_urgency_score, priority_level, ai_recommendation, status,
-             assigned_officer_id, assigned_officer_name)
-            VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?)")
-            ->execute([$tmpRef, $name, $phone, $type, $narrative, $purok,
-                       $score, $finalPriority, $t['recommendation'], $initialStatus,
-                       $online ? null : ($actorId ?: null), $online ? 'Unassigned' : $actorName]);
+             purok, street_address, latitude, longitude, scenario_type, verification_level, ai_urgency_score, priority_level, severity, ai_recommendation, status,
+             original_ai_priority, severity_review_status, ai_analysis_json, analysis_version, legal_routing, weapon_detected,
+             vawc_minor_flag, assigned_officer_id, assigned_officer_name, location_accuracy)
+            VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, 'VERIFIED', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+            ->execute([$tmpRef, $name, $phone, $type, $narrative, $purok, $street !== '' ? $street : null, $lat, $lng, $scenarioType,
+                       $score, $finalPriority, $finalPriority, $t['recommendation'], $initialStatus, $t['priority'], $review,
+                       json_encode($a, JSON_UNESCAPED_UNICODE), ENGINE_VERSION, $a['legal_routing'], $a['weapon_flag'],
+                       $a['vawc_minor_flag'] ? 1 : 0, $online ? null : ($actorId ?: null), $online ? 'Unassigned' : $actorName, $locAccuracy]);
         $incidentId = (int) $pdo->lastInsertId();
 
         $trackingId = sprintf('TRK-%s-%03d', date('Y'), $incidentId);
@@ -174,9 +191,18 @@ function encode_case_run(array $input, array $actor, array $opts = []): array {
 
     logAudit('ENCODE_INCIDENT', ['reference' => $trackingId, 'type' => $type, 'priority' => $finalPriority], $actorId);
 
+    // Photos attached to the report. The case is already saved, so a bad photo never loses it.
+    $photoResult = case_photos_save($pdo, $incidentId, $opts['photos'] ?? null, $actorId > 0 ? $actorId : null);
+    $message = "Case {$trackingId} recorded as {$type} ({$finalPriority}).";
+    if ($photoResult['rejected']) {
+        $message .= ' Some photos were not saved: ' . implode('; ', array_slice($photoResult['rejected'], 0, 3)) . '.';
+    }
+
     return ['status' => 200, 'body' => [
         'success'          => true,
-        'message'          => "Case {$trackingId} recorded as {$type} ({$finalPriority}).",
+        'message'          => $message,
+        'photos_saved'     => count($photoResult['saved']),
+        'photo_warnings'   => $photoResult['rejected'],
         'reference_number' => $trackingId,
         'priority'         => $finalPriority,
         'data'             => [
@@ -185,6 +211,7 @@ function encode_case_run(array $input, array $actor, array $opts = []): array {
             'priority'            => $finalPriority,
             'status'              => $initialStatus,
             'urgency_score'       => $score,
+            'location_accuracy'   => $locAccuracy,
             'recommendation'      => $t['recommendation'],
             'legal_routing'       => $a['legal_routing'],
             'kp_status'           => $a['kp_status'],
@@ -202,14 +229,14 @@ function encode_case_run(array $input, array $actor, array $opts = []): array {
  * Runs the same triage as the desk officer path. The resident's own priority is ignored, and the category is only a hint.
  * Returns ['status' => HTTP code, 'body' => array] like encode_case_run().
  */
-function online_case_run(array $in, int $userId): array {
+function online_case_run(array $in, int $userId, $photos = null): array {
     $name = trim((string) ($in['complainant'] ?? ''));
     return encode_case_run([
         'complainant_name'      => $name,
         'complainant_phone'     => (string) ($in['phone'] ?? ''),
         'purok'                 => (string) ($in['purok'] ?? ''),
-        'street_address'        => (string) ($in['street'] ?? $in['street_address'] ?? ''),
+        'street_address'        => trim((string) ($in['street_address'] ?? $in['street'] ?? '')),
         'narrative_description' => (string) ($in['narrative'] ?? ''),
         'incident_type'         => (string) ($in['category'] ?? ''),
-    ], ['id' => $userId, 'full_name' => $name !== '' ? $name : 'Online Resident'], ['online' => true, 'scenario' => 'ONLINE_PORTAL']);
+    ], ['id' => $userId, 'full_name' => $name !== '' ? $name : 'Online Resident'], ['online' => true, 'scenario' => 'ONLINE_PORTAL', 'photos' => $photos]);
 }

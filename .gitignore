@@ -14,3 +14,12 @@ node_modules/
 vendor/
 
 config/secrets.php
+
+# Local-only files (added)
+db_connect.php
+upstream-*.txt
+*.bak
+*.backup
+# User-uploaded files (may contain personal documents)
+uploads/
+config/mapbox_public.php

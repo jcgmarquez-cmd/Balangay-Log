@@ -39,6 +39,38 @@ if (!$initials) $initials = 'JD';
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="admin-dashboard.css?v=<?= time() ?>" />
+    <style>
+        /* Collapse arrow: vertically centered on the user pill, straddling the sidebar edge */
+        .identity-wrap { position: relative; }
+        .identity-wrap > .sidebar-collapse-btn {
+            position: absolute;
+            top: 50%;
+            right: -36px;      /* pill right edge -> sidebar edge (~20px padding) + half the button (16px) */
+            left: auto;
+            bottom: auto;
+            translate: 0 -50%; /* "translate" (not "transform") so any existing rotate/flip transform still works */
+            margin: 0;
+            z-index: 5;
+        }
+    </style>
+    <style>
+        /* Status pills: identical size in every row, any status */
+        #allReportRows td:nth-child(5) > *,
+        #overviewRecentRows td:nth-child(5) > * {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            width: 116px;
+            height: 32px;
+            padding: 0 10px;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
     <div class="admin-shell">
@@ -62,24 +94,26 @@ if (!$initials) $initials = 'JD';
             <div class="sidebar-header-row">
                 <a class="admin-brand" href="captain_dashboard.php" aria-label="BalangayLog Executive Overview">
                 <span class="admin-brand-mark" style="background: transparent; overflow: hidden; display: grid; place-items: center;">
-                  <img src="assets/balangaylog-transparent.png" alt="Barangay Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                  <img src="assets/balangaylog-logo.png" alt="Barangay Logo" style="width: 100%; height: 100%; object-fit: contain;">
                 </span>
                 <span><strong>BalangayLog</strong><small>BARANGAY DUALE</small></span>
             </a>
                 <div class="sidebar-header-actions">
-                    <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">
-                        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-                    </button>
                     <button class="sidebar-close-btn" id="sidebarCloseBtn" type="button" aria-label="Close Navigation">×</button>
                 </div>
             </div>
 
-            <div class="admin-identity">
-                <span class="identity-avatar" id="residentAvatar" style="position: relative; overflow: hidden;">
-                    <span id="residentSidebarInitials" style="<?= $profilePic ? 'display: none;' : '' ?>"><?= $initials ?></span>
-                    <img id="residentSidebarPic" src="<?= $profilePic ?? '' ?>" alt="Resident Avatar" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; <?= $profilePic ? 'display: block;' : 'display: none;' ?>">
-                </span>
-                <span><strong id="residentName"><?= $residentName ?></strong><small>Verified • <?= $purok ?></small></span>
+            <div class="identity-wrap">
+                <div class="admin-identity">
+                    <span class="identity-avatar" id="residentAvatar" style="position: relative; overflow: hidden;">
+                        <span id="residentSidebarInitials" style="<?= $profilePic ? 'display: none;' : '' ?>"><?= $initials ?></span>
+                        <img id="residentSidebarPic" src="<?= $profilePic ?? '' ?>" alt="Resident Avatar" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; <?= $profilePic ? 'display: block;' : 'display: none;' ?>">
+                    </span>
+                    <span><strong id="residentName"><?= $residentName ?></strong><small>Verified • <?= $purok ?></small></span>
+                </div>
+                <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">
+                        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+                    </button>
             </div>
 
             <nav class="admin-nav" aria-label="Resident Portal Views">
@@ -283,7 +317,7 @@ if (!$initials) $initials = 'JD';
                                 
                                 <div class="profile-title-block">
                                     <h2><?= $residentName ?></h2>
-                                    <span class="role-badge" style="background: #19766c;">Verified Resident</span>
+                                    <span class="role-badge">Verified Resident</span>
                                 </div>
 
                                 <div class="profile-save-action">
@@ -354,8 +388,8 @@ if (!$initials) $initials = 'JD';
         <form id="incidentForm" method="dialog">
             <div class="dialog-heading">
                 <div>
-                    <h2 style="font-size: 19px; font-weight: 800; font-family: 'Manrope', sans-serif;">Encode Walk-In Desk Blotter</h2>
-                    <p style="margin: 3px 0 0; color: var(--muted); font-size: 12px;">Transcribe citizen narrative. Category and Priority are evaluated automatically by AI.</p>
+                    <h2 style="font-size: 19px; font-weight: 800; font-family: 'Manrope', sans-serif;">Report an Incident</h2>
+                    <p style="margin: 3px 0 0; color: var(--muted); font-size: 12px;">Describe what happened. Category and priority are evaluated automatically.</p>
                 </div>
                 <button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button>
             </div>
@@ -375,15 +409,8 @@ if (!$initials) $initials = 'JD';
                     <div class="form-row" style="margin-top: 10px;">
                         <div>
                             <label for="purokSelect">Purok / Zone *</label>
-                            <select id="purokSelect" name="purok" required autocomplete="address-level3">
+                            <select id="purokSelect" name="purok" data-current-value="<?= $purok ?>" required autocomplete="address-level3">
                                 <option value="">Select Purok</option>
-                                <option value="Purok 1">Purok 1</option>
-                                <option value="Purok 2" <?= $purok === 'Purok 2' ? 'selected' : '' ?>>Purok 2</option>
-                                <option value="Purok 3" <?= $purok === 'Purok 3' ? 'selected' : '' ?>>Purok 3</option>
-                                <option value="Purok 4">Purok 4</option>
-                                <option value="Purok 5">Purok 5</option>
-                                <option value="Purok 6">Purok 6</option>
-                                <option value="Purok 7">Purok 7</option>
                             </select>
                         </div>
                         <div>
@@ -400,6 +427,13 @@ if (!$initials) $initials = 'JD';
                     <div>
                         <label for="narrativeDescriptionInput">Blotter Narrative &amp; Facts *</label>
                         <textarea id="narrativeDescriptionInput" name="narrative" rows="5" required placeholder="Type the incident narrative facts here. The AI will evaluate the details to automatically categorize and assign priority..."></textarea>
+                    </div>
+
+                    <div style="margin-top: 12px;">
+                        <label for="evidencePhotosInput">Photos (optional)</label>
+                        <input type="file" id="evidencePhotosInput" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple>
+                        <div id="evidencePreview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"></div>
+                        <p id="evidenceHint" style="font-size: 11px; color: var(--muted); margin: 6px 0 0;">Up to 4 photos (JPG, PNG or WebP). Large photos are resized automatically.</p>
                     </div>
 
                     <input type="hidden" name="incident_type" id="aiGeneratedCategoryInput" value="General Incident">
@@ -542,5 +576,18 @@ if (!$initials) $initials = 'JD';
     <script src="sidebar.js?v=<?= time() ?>"></script>
     <script src="officer-ai.js?v=<?= time() ?>"></script>
     <script src="resident-dashboard.js?v=<?= time() ?>"></script>
+    <script>
+    /* Keep the collapse arrow vertically centered on the user pill, expanded or collapsed */
+    (function () {
+        var btn = document.getElementById('sidebarCollapseBtn');
+        var pill = document.querySelector('.identity-wrap .admin-identity');
+        if (!btn || !pill) return;
+        function center() { btn.style.top = (pill.offsetTop + pill.offsetHeight / 2) + 'px'; }
+        center();
+        window.addEventListener('resize', center);
+        window.addEventListener('load', center);
+        if (window.ResizeObserver) new ResizeObserver(center).observe(pill);
+    })();
+    </script>
 </body>
 </html>

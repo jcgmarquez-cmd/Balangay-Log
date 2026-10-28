@@ -47,15 +47,14 @@ function sendCaseUpdateSms(PDO $pdo, int $incidentId, string $newStatus, string 
             $cleanPhone = '63' . $cleanPhone;
         }
 
-        $name = trim($case['complainant_name'] ?? 'Resident');
-        $ref = $case['reference_number']; 
-        $handler = !empty($case['deployed_unit']) ? $case['deployed_unit'] : (!empty($case['assigned_officer_name']) ? $case['assigned_officer_name'] : '');
-        $handlerText = $handler !== '' ? " Assigned: {$handler}." : '';
-
-        $smsMsg = "BalangayLog Update: Hi {$name}, your case [Ref: {$ref}] status is now '{$newStatus}'.{$handlerText}";
-        if ($remarks !== '') {
-            $smsMsg .= " Remarks: {$remarks}";
+        if (strlen($cleanPhone) < 11) {
+            return;
         }
+
+       $ref = $case['reference_number']; 
+
+        // Keep it concise (under 160 characters) to avoid multi-part SMS carrier delays
+        $smsMsg = "BalangayLog: Case {$ref} is now {$newStatus}. Check portal for full details.";
 
         $response = sendIprogSms($cleanPhone, $smsMsg);
         error_log("[SMS] Sent update for {$ref} to {$cleanPhone}: " . $response);
@@ -216,6 +215,16 @@ function officerTransition(PDO $pdo, string $ref, array $t): void
         }
         $params[] = $incidentId;
         $pdo->prepare('UPDATE incident_reports SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
+        // The officer who accepts or dispatches becomes the Handling Officer, unless one is already recorded.
+        if (!empty($t['set_handling_officer']) && !empty($t['officer_id'])) {
+            try {
+                $pdo->prepare("UPDATE incident_reports SET assigned_officer_id = ?, assigned_officer_name = ?
+                    WHERE id = ? AND (assigned_officer_name IS NULL OR TRIM(assigned_officer_name) = '')")
+                    ->execute([(int) $t['officer_id'], (string) $t['officer'], $incidentId]);
+            } catch (Throwable $handlingError) {
+                error_log('[officer_console] Could not record handling officer: ' . $handlingError->getMessage());
+            }
+        }
 
         $pdo->prepare('INSERT INTO case_milestones
                 (incident_id, tracking_id, status_snapshot, officer_in_charge, deployed_unit, action_note, created_at)
@@ -514,6 +523,12 @@ try {
 
     if ($method !== 'POST') {
         officerRespond(['success' => false, 'message' => 'Method not allowed.'], 405);
+    }
+
+    // A form upload larger than post_max_size arrives empty; say so instead of failing with a vague error.
+    if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0
+        && stripos((string) ($_SERVER['CONTENT_TYPE'] ?? ''), 'multipart/form-data') !== false) {
+        officerRespond(['success' => false, 'message' => 'The upload was too large for the server. Try fewer or smaller photos.'], 413);
     }
 
     $rawInput = file_get_contents('php://input');
@@ -1106,6 +1121,8 @@ try {
                 'milestone_status' => 'IN_PROGRESS',
                 'milestone_stage'  => 'DESK_REVIEW',
                 'officer'          => $actorName,
+                'officer_id'       => $actorId,
+                'set_handling_officer' => ($userType === 'OFFICER'),
                 'note'             => $note,
             ]);
             officerRespond(['success' => true, 'message' => "Case #{$refNumber} accepted into active blotter."]);
@@ -1126,13 +1143,6 @@ try {
                 'officer' => $actorName,
                 'note' => "Report rejected during triage. Reason: {$reason}",
             ]);
-
-            $idStmt = $pdo->prepare('SELECT id FROM incident_reports WHERE reference_number = ? LIMIT 1');
-            $idStmt->execute([$refNumber]);
-            $rejId = (int) $idStmt->fetchColumn();
-            if ($rejId > 0) {
-                sendCaseUpdateSms($pdo, $rejId, 'REJECTED', $reason);
-            }
 
             officerRespond(['success' => true, 'message' => "Report #{$refNumber} rejected and removed from triage."]);
 
@@ -1157,6 +1167,8 @@ try {
                 'milestone_status' => 'DISPATCHED',
                 'milestone_stage'  => 'UNIT_DISPATCHED',
                 'officer'          => $actorName,
+                'officer_id'       => $actorId,
+                'set_handling_officer' => ($userType === 'OFFICER'),
                 'unit'             => 'Responder assignment pending',
                 'milestone_unit'   => 'Responder assignment pending',
                 'recommendation'   => 'Responder unit assigned for on-site assessment.',
@@ -1429,8 +1441,10 @@ try {
             if ($endorsementsTableStmt->fetchColumn()) {
                 $endorsementStmt = $pdo->prepare("
                     SELECT e.id, e.type, e.status, e.referred_at, e.endorsed_at, e.remarks,
-                        referred.full_name AS referred_by, endorsed.full_name AS endorsed_by
+                     ir.incident_type,
+                     referred.full_name AS referred_by, endorsed.full_name AS endorsed_by
                     FROM endorsements e
+                    INNER JOIN incident_reports ir ON ir.id = e.case_id
                     LEFT JOIN users referred ON referred.id = e.referred_by_user_id
                     LEFT JOIN users endorsed ON endorsed.id = e.endorsed_by_user_id
                     WHERE e.case_id = ?
@@ -1533,10 +1547,9 @@ try {
             ]);
 
         case 'encode_case':
-            $narrative = trim((string) ($input['narrative_description'] ?? $input['narrative'] ?? ''));
-            if ($narrative === '') {
-                officerRespond(['success' => false, 'message' => 'Narrative description is required.'], 400);
-            }
+            require_once __DIR__ . '/../lib/case_intake.php';
+                $r = encode_case_run($input, ['id' => $actorId, 'full_name' => $actorName], ['photos' => $_FILES['photos'] ?? null]);
+                    officerRespond($r['body'], $r['status']);
 
             $analysis = [
                 'incident_type'     => 'General Incident',
@@ -1633,6 +1646,73 @@ try {
                 if ($pdo->inTransaction()) $pdo->rollBack();
                 throw $e;
             }
+
+        case 'profile_update':
+            $name = trim((string) ($input['full_name'] ?? ''));
+            $contact = trim((string) ($input['contact_number'] ?? ''));
+
+            if ($name === '') {
+                officerRespond(['success' => false, 'message' => 'Full name cannot be blank.'], 422);
+            }
+
+            $picturePath = null;
+            if (!empty($_FILES['profile_picture']['tmp_name'])) {
+                $picture = $_FILES['profile_picture'];
+                if ($picture['error'] !== UPLOAD_ERR_OK || $picture['size'] > 2 * 1024 * 1024) {
+                    officerRespond(['success' => false, 'message' => 'Profile picture must be smaller than 2 MB.'], 422);
+                }
+
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $mime = $finfo->file($picture['tmp_name']);
+                $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+                if (!isset($extensions[$mime])) {
+                    officerRespond(['success' => false, 'message' => 'Use a JPG, PNG, or WebP profile picture.'], 422);
+                }
+
+                $directory = __DIR__ . '/../uploads/profiles';
+                if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+                    officerRespond(['success' => false, 'message' => 'Could not create profile images directory.'], 500);
+                }
+
+                $filename = 'officer_' . $actorId . '_' . bin2hex(random_bytes(6)) . '.' . $extensions[$mime];
+                if (!move_uploaded_file($picture['tmp_name'], $directory . '/' . $filename)) {
+                    officerRespond(['success' => false, 'message' => 'Could not save the profile picture.'], 500);
+                }
+                $picturePath = 'uploads/profiles/' . $filename;
+            }
+
+            if ($picturePath !== null) {
+                $stmt = $pdo->prepare('UPDATE users SET full_name = ?, contact_number = ?, profile_picture = ? WHERE id = ?');
+                $stmt->execute([$name, $contact, $picturePath, $actorId]);
+            } else {
+                $stmt = $pdo->prepare('UPDATE users SET full_name = ?, contact_number = ? WHERE id = ?');
+                $stmt->execute([$name, $contact, $actorId]);
+            }
+
+            $_SESSION['full_name'] = $name;
+            officerRespond(['success' => true, 'message' => 'Profile information updated successfully.']);
+
+        case 'password_update':
+            $currentPassword = (string) ($input['current_password'] ?? '');
+            $newPassword = (string) ($input['new_password'] ?? '');
+            $confirmPassword = (string) ($input['confirm_password'] ?? '');
+
+            if (strlen($newPassword) < 8 || $newPassword !== $confirmPassword) {
+                officerRespond(['success' => false, 'message' => 'New passwords must match and be at least 8 characters.'], 422);
+            }
+
+            $stmt = $pdo->prepare('SELECT password_hash FROM users WHERE id = ?');
+            $stmt->execute([$actorId]);
+            $hash = (string) $stmt->fetchColumn();
+
+            if (!password_verify($currentPassword, $hash)) {
+                officerRespond(['success' => false, 'message' => 'Current password is incorrect.'], 422);
+            }
+
+            $stmt = $pdo->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+            $stmt->execute([password_hash($newPassword, PASSWORD_DEFAULT), $actorId]);
+
+            officerRespond(['success' => true, 'message' => 'Password changed successfully.']);
 
         default:
             officerRespond(['success' => false, 'message' => 'Unknown officer action.'], 405);

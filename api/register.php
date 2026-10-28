@@ -104,14 +104,21 @@ if (isLoggedIn()) {
             errorBanner.style.display = 'block';
         }
 
-        fetch('api/get_system_parameters.php')
-            .then((response) => response.json())
+        fetch('get_system_parameters.php')
+            .then(async (response) => {
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load locations.');
+                return result;
+            })
             .then((result) => {
-                if (!result.success) return;
                 const purokSelect = document.getElementById('purok');
                 result.puroks.forEach((purok) => purokSelect.add(new Option(purok, purok)));
             })
-            .catch(() => showError('Unable to load the Purok list. Please refresh the page.'));
+            .catch(() => {
+                const purokSelect = document.getElementById('purok');
+                if (purokSelect) purokSelect.disabled = true;
+                showError('Unable to load the Purok list. Please refresh the page.');
+            });
 
         if (registerForm) {
             registerForm.addEventListener('submit', async function (event) {

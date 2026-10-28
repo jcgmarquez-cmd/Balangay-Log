@@ -209,6 +209,15 @@ if (!$initials) $initials = 'OF';
         .btn-action-danger:hover {
             background: #fff3f1;
         }
+        /* Red dispatch buttons ("Acknowledge / Dispatch", "Reassign Dispatch"): same width on every card */
+        .queue-action-group > .button-danger[data-action="dispatch"] {
+            box-sizing: border-box;
+            width: 176px;
+            flex: 0 0 176px;
+            justify-content: center;
+            text-align: center;
+            white-space: nowrap;
+        }
         .tanod-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -366,6 +375,20 @@ if (!$initials) $initials = 'OF';
             color: #ffffff;
         }
     </style>
+    <style>
+        /* Collapse arrow: vertically centered on the user pill, straddling the sidebar edge */
+        .identity-wrap { position: relative; }
+        .identity-wrap > .sidebar-collapse-btn {
+            position: absolute;
+            top: 50%;
+            right: -36px;      /* pill right edge -> sidebar edge (~20px padding) + half the button (16px) */
+            left: auto;
+            bottom: auto;
+            translate: 0 -50%; /* "translate" (not "transform") so any existing rotate/flip transform still works */
+            margin: 0;
+            z-index: 5;
+        }
+    </style>
 </head>
 <body>
     <div class="admin-shell">
@@ -389,30 +412,32 @@ if (!$initials) $initials = 'OF';
             <div class="sidebar-header-row">
                 <a class="admin-brand" href="captain_dashboard.php" aria-label="BalangayLog Executive Overview">
                 <span class="admin-brand-mark" style="background: transparent; overflow: hidden; display: grid; place-items: center;">
-                  <img src="assets/balangaylog-transparent.png" alt="Barangay Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                  <img src="assets/balangaylog-logo.png" alt="Barangay Logo" style="width: 100%; height: 100%; object-fit: contain;">
                 </span>
                 <span><strong>BalangayLog</strong><small>BARANGAY DUALE</small></span>
             </a>
                 <div class="sidebar-header-actions">
-                    <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">
-                        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-                    </button>
                     <button class="sidebar-close-btn" id="sidebarCloseBtn" type="button" aria-label="Close Navigation">×</button>
                 </div>
             </div>
 
-            <div class="admin-identity">
-                <span class="identity-avatar" id="officerAvatar" style="position: relative; overflow: hidden;">
-                    <span id="officerInitials"><?= $initials ?></span>
-                    <img id="officerProfilePic" src="<?= $profilePic ?? '' ?>" alt="Officer Picture" <?= $profilePic ? '' : 'hidden' ?> style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
-                </span>
-                <span>
-                    <strong id="officerDisplayName"><?= $officerName ?></strong>
-                    <small><?= $roleLabel ?></small>
-                </span>
+            <div class="identity-wrap">
+                <div class="admin-identity">
+                    <span class="identity-avatar" id="officerAvatar" style="position: relative; overflow: hidden;">
+                        <span id="officerInitials"><?= $initials ?></span>
+                        <img id="officerProfilePic" src="<?= $profilePic ?? '' ?>" alt="Officer Picture" <?= $profilePic ? '' : 'hidden' ?> style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                    </span>
+                    <span>
+                        <strong id="officerDisplayName"><?= $officerName ?></strong>
+                        <small><?= $roleLabel ?></small>
+                    </span>
+                </div>
+                <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">
+                        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+                    </button>
             </div>
 
-   
+            <p class="eyebrow sidebar-section-label">OPERATIONS</p>
             <nav class="admin-nav" aria-label="Officer Operations Views">
                 <button class="admin-nav-link is-active" type="button" data-view="dashboard">
                     <span class="nav-symbol">▦</span>Dashboard
@@ -911,13 +936,6 @@ if (!$initials) $initials = 'OF';
                             <label for="purokSelect">Purok / Zone *</label>
                             <select id="purokSelect" name="purok" required autocomplete="address-level3">
                                 <option value="">Select Purok</option>
-                                <option value="Purok 1">Purok 1</option>
-                                <option value="Purok 2">Purok 2</option>
-                                <option value="Purok 3">Purok 3</option>
-                                <option value="Purok 4">Purok 4</option>
-                                <option value="Purok 5">Purok 5</option>
-                                <option value="Purok 6">Purok 6</option>
-                                <option value="Purok 7">Purok 7</option>
                             </select>
                         </div>
                         <div>
@@ -934,6 +952,13 @@ if (!$initials) $initials = 'OF';
                     <div>
                         <label for="narrativeDescriptionInput">Blotter Narrative &amp; Facts *</label>
                         <textarea id="narrativeDescriptionInput" name="narrative_description" rows="5" required placeholder="Type the incident narrative facts here. The AI will evaluate the details to automatically categorize and assign priority..."></textarea>
+                    </div>
+
+                    <div style="margin-top: 12px;">
+                        <label for="evidencePhotosInput">Photos (optional)</label>
+                        <input type="file" id="evidencePhotosInput" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple>
+                        <div id="evidencePreview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"></div>
+                        <p id="evidenceHint" style="font-size: 11px; color: var(--muted); margin: 6px 0 0;">Up to 4 photos (JPG, PNG or WebP). Large photos are resized automatically.</p>
                     </div>
 
                     <input type="hidden" name="incident_type" id="aiGeneratedCategoryInput" value="General Incident">
@@ -1192,5 +1217,18 @@ if (!$initials) $initials = 'OF';
     <script src="sidebar.js?v=<?= time() ?>"></script>
     <script src="officer-ai.js?v=<?= time() ?>"></script>
     <script src="officer-dashboard.js?v=<?= time() ?>"></script>
+    <script>
+    /* Keep the collapse arrow vertically centered on the user pill, expanded or collapsed */
+    (function () {
+        var btn = document.getElementById('sidebarCollapseBtn');
+        var pill = document.querySelector('.identity-wrap .admin-identity');
+        if (!btn || !pill) return;
+        function center() { btn.style.top = (pill.offsetTop + pill.offsetHeight / 2) + 'px'; }
+        center();
+        window.addEventListener('resize', center);
+        window.addEventListener('load', center);
+        if (window.ResizeObserver) new ResizeObserver(center).observe(pill);
+    })();
+    </script>
 </body>
 </html>

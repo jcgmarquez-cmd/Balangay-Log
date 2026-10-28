@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('api/get_system_parameters.php', { credentials: 'same-origin' });
             const result = await response.json();
-            if (!response.ok || !result.success) return;
+            if (!response.ok || !result.success) throw new Error(result.message || 'System parameters could not be loaded.');
 
             const options = [
                 ['purokSelect', 'Select Purok', result.puroks],
@@ -86,6 +86,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (error) {
             console.warn('Could not load managed system parameters:', error);
+            ['purokSelect', 'incidentCategory'].forEach((elementId) => {
+                const select = document.getElementById(elementId);
+                if (select) select.disabled = true;
+            });
         }
     }
     loadSystemParameters();
