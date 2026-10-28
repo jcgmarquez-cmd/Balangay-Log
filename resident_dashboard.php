@@ -317,7 +317,7 @@ if (!$initials) $initials = 'JD';
                                 
                                 <div class="profile-title-block">
                                     <h2><?= $residentName ?></h2>
-                                    <span class="role-badge" style="background: #19766c;">Verified Resident</span>
+                                    <span class="role-badge">Verified Resident</span>
                                 </div>
 
                                 <div class="profile-save-action">
