@@ -532,8 +532,8 @@ function renderCaseDetail(data) {
     document.getElementById('casePeopleFields').innerHTML = people.join('');
 
     const assignmentFields = [
-        detailField('Assigned Officer', assignedOfficer || 'Not assigned'),
-        detailField('Assigned Personnel / Unit', assignedUnit || 'Not assigned')
+        detailField('Handling Officer', assignedOfficer || 'Not assigned'),
+        detailField('Dispatched Tanod / Responders', assignedUnit || 'Not assigned')
     ];
     if (data.lupon?.next_hearing) assignmentFields.push(detailField('Next Lupon Hearing', formatDateTime(data.lupon.next_hearing)));
     document.getElementById('caseAssignmentFields').innerHTML = assignmentFields.join('');

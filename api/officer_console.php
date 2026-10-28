@@ -216,6 +216,16 @@ function officerTransition(PDO $pdo, string $ref, array $t): void
         }
         $params[] = $incidentId;
         $pdo->prepare('UPDATE incident_reports SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
+        // The officer who accepts or dispatches becomes the Handling Officer, unless one is already recorded.
+        if (!empty($t['set_handling_officer']) && !empty($t['officer_id'])) {
+            try {
+                $pdo->prepare("UPDATE incident_reports SET assigned_officer_id = ?, assigned_officer_name = ?
+                    WHERE id = ? AND (assigned_officer_name IS NULL OR TRIM(assigned_officer_name) = '')")
+                    ->execute([(int) $t['officer_id'], (string) $t['officer'], $incidentId]);
+            } catch (Throwable $handlingError) {
+                error_log('[officer_console] Could not record handling officer: ' . $handlingError->getMessage());
+            }
+        }
 
         $pdo->prepare('INSERT INTO case_milestones
                 (incident_id, tracking_id, status_snapshot, officer_in_charge, deployed_unit, action_note, created_at)
@@ -1112,6 +1122,8 @@ try {
                 'milestone_status' => 'IN_PROGRESS',
                 'milestone_stage'  => 'DESK_REVIEW',
                 'officer'          => $actorName,
+                'officer_id'       => $actorId,
+                'set_handling_officer' => ($userType === 'OFFICER'),
                 'note'             => $note,
             ]);
             officerRespond(['success' => true, 'message' => "Case #{$refNumber} accepted into active blotter."]);
@@ -1163,6 +1175,8 @@ try {
                 'milestone_status' => 'DISPATCHED',
                 'milestone_stage'  => 'UNIT_DISPATCHED',
                 'officer'          => $actorName,
+                'officer_id'       => $actorId,
+                'set_handling_officer' => ($userType === 'OFFICER'),
                 'unit'             => 'Responder assignment pending',
                 'milestone_unit'   => 'Responder assignment pending',
                 'recommendation'   => 'Responder unit assigned for on-site assessment.',

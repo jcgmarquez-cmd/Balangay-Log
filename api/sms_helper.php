@@ -13,9 +13,18 @@ function normalizeSmsPhone(string $phoneNumber): string
 
 function sendIprogSmsResult(string $phoneNumber, string $message): array
 {
-    // Keep the provider credential in Apache/PHP's environment, never in source code.
+    // 1. Try to get the token from the server environment first (Best Practice for Production)
     $apiToken = getenv('IPROG_SMS_API_TOKEN');
-    if ($apiToken === false || trim($apiToken) === '' || trim($apiToken) === 'API_KEY_HERE') {
+
+    // 2. Fallback for local XAMPP development if environment variable isn't set up yet
+    if ($apiToken === false || trim($apiToken) === '') {
+        // REPLACE THIS STRING with your real IPROG API token when you want to test live SMS,
+        // or leave it as your token so local testing works out-of-the-box.
+        $apiToken = 'YOUR_ACTUAL_IPROG_API_TOKEN_HERE'; 
+    }
+
+    // Validate that we have a usable token
+    if ($apiToken === false || trim($apiToken) === '' || trim($apiToken) === 'API_KEY_HERE' || trim($apiToken) === 'YOUR_ACTUAL_IPROG_API_TOKEN_HERE') {
         return ['success' => false, 'category' => 'configuration_failure'];
     }
 
