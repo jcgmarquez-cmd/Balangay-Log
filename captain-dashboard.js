@@ -372,13 +372,18 @@ function openCase(ref) {
  * ENDORSEMENTS
  * ==================================================================== */
 const eKey = e => String(pick(e, 'id', 'endorsement_id', 'case_id') || F.ref(e));
-const eFields = e => ({
-    ref: F.ref(e) || pick(e, 'case_id', 'id'),
-    type: pick(e, 'endorsement_type', 'referral_type', 'type', 'incident_type'),
-    purok: F.purok(e),
-    by: pick(e, 'referred_by_name', 'referred_by', 'submitted_by_name', 'officer_name'),
-    date: pick(e, 'referred_at', 'date_referred', 'created_at')
-});
+const eFields = e => {
+    const matchedCase = state.cases.find(c => String(F.ref(c)) === String(F.ref(e) || e.case_id));
+    const fallbackType = matchedCase ? F.type(matchedCase) : '';
+
+    return {
+        ref: F.ref(e) || pick(e, 'case_id', 'id'),
+        type: pick(e, 'incident_type') || fallbackType || pick(e, 'endorsement_type', 'referral_type', 'type') || 'General Incident',
+        purok: F.purok(e) || (matchedCase ? F.purok(matchedCase) : '—'),
+        by: pick(e, 'referred_by_name', 'referred_by', 'submitted_by_name', 'officer_name'),
+        date: pick(e, 'referred_at', 'date_referred', 'created_at')
+    };
+};
 
 function renderEndorseRows(tbody, emptyEl, list) {
     if (!tbody) return;

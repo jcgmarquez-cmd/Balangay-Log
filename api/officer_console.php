@@ -51,15 +51,10 @@ function sendCaseUpdateSms(PDO $pdo, int $incidentId, string $newStatus, string 
             return;
         }
 
-        $name = trim($case['complainant_name'] ?? 'Resident');
-        $ref = $case['reference_number']; 
-        $handler = !empty($case['deployed_unit']) ? $case['deployed_unit'] : (!empty($case['assigned_officer_name']) ? $case['assigned_officer_name'] : '');
-        $handlerText = $handler !== '' ? " Assigned: {$handler}." : '';
+       $ref = $case['reference_number']; 
 
-        $smsMsg = "BalangayLog Update: Hi {$name}, your case [Ref: {$ref}] status is now '{$newStatus}'.{$handlerText}";
-        if ($remarks !== '') {
-            $smsMsg .= " Remarks: {$remarks}";
-        }
+        // Keep it concise (under 160 characters) to avoid multi-part SMS carrier delays
+        $smsMsg = "BalangayLog: Case {$ref} is now {$newStatus}. Check portal for full details.";
 
         $response = sendIprogSms($cleanPhone, $smsMsg);
         error_log("[SMS] Sent update for {$ref} to {$cleanPhone}: " . $response);
@@ -1446,8 +1441,10 @@ try {
             if ($endorsementsTableStmt->fetchColumn()) {
                 $endorsementStmt = $pdo->prepare("
                     SELECT e.id, e.type, e.status, e.referred_at, e.endorsed_at, e.remarks,
-                        referred.full_name AS referred_by, endorsed.full_name AS endorsed_by
+                     ir.incident_type,
+                     referred.full_name AS referred_by, endorsed.full_name AS endorsed_by
                     FROM endorsements e
+                    INNER JOIN incident_reports ir ON ir.id = e.case_id
                     LEFT JOIN users referred ON referred.id = e.referred_by_user_id
                     LEFT JOIN users endorsed ON endorsed.id = e.endorsed_by_user_id
                     WHERE e.case_id = ?

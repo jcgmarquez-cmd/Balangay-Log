@@ -46,7 +46,12 @@ $delivery = sendIprogSmsResult($cleanPhone, $message);
 if (!$delivery['success']) {
     unset($_SESSION['registration_otp'], $_SESSION['registration_phone']);
     http_response_code(502);
-    echo json_encode(['success' => false, 'message' => 'SMS delivery could not be confirmed. Please try again later.']);
+    // DEBUG ENABLED: Returns the specific failure category for troubleshooting
+    echo json_encode([
+        'success' => false, 
+        'message' => 'SMS delivery could not be confirmed.', 
+        'debug_error' => $delivery['category']
+    ]);
     exit;
 }
 

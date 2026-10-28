@@ -16,11 +16,9 @@ function sendIprogSmsResult(string $phoneNumber, string $message): array
     // 1. Try to get the token from the server environment first (Best Practice for Production)
     $apiToken = getenv('IPROG_SMS_API_TOKEN');
 
-    // 2. Fallback for local XAMPP development if environment variable isn't set up yet
+    //// 2. Fallback for local XAMPP development if environment variable isn't set up yet
     if ($apiToken === false || trim($apiToken) === '') {
-        // REPLACE THIS STRING with your real IPROG API token when you want to test live SMS,
-        // or leave it as your token so local testing works out-of-the-box.
-        $apiToken = 'YOUR_ACTUAL_IPROG_API_TOKEN_HERE'; 
+        $apiToken = '2525a70dadb65d4882083689f8f68d8939c6e7ff'; 
     }
 
     // Validate that we have a usable token
