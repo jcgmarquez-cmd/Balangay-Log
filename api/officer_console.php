@@ -219,7 +219,7 @@ function officerTransition(PDO $pdo, string $ref, array $t): void
         if (!empty($t['set_handling_officer']) && !empty($t['officer_id'])) {
             try {
                 $pdo->prepare("UPDATE incident_reports SET assigned_officer_id = ?, assigned_officer_name = ?
-                    WHERE id = ? AND (assigned_officer_name IS NULL OR TRIM(assigned_officer_name) = '')")
+                    WHERE id = ? AND (assigned_officer_name IS NULL OR TRIM(assigned_officer_name) = '' OR LOWER(TRIM(assigned_officer_name)) = 'unassigned')")
                     ->execute([(int) $t['officer_id'], (string) $t['officer'], $incidentId]);
             } catch (Throwable $handlingError) {
                 error_log('[officer_console] Could not record handling officer: ' . $handlingError->getMessage());
@@ -1122,7 +1122,7 @@ try {
                 'milestone_stage'  => 'DESK_REVIEW',
                 'officer'          => $actorName,
                 'officer_id'       => $actorId,
-                'set_handling_officer' => ($userType === 'OFFICER'),
+                'set_handling_officer' => in_array($userType, ['OFFICER', 'CAPTAIN', 'ADMIN', 'SYSTEM_ADMIN'], true),
                 'note'             => $note,
             ]);
             officerRespond(['success' => true, 'message' => "Case #{$refNumber} accepted into active blotter."]);
@@ -1168,7 +1168,7 @@ try {
                 'milestone_stage'  => 'UNIT_DISPATCHED',
                 'officer'          => $actorName,
                 'officer_id'       => $actorId,
-                'set_handling_officer' => ($userType === 'OFFICER'),
+                'set_handling_officer' => in_array($userType, ['OFFICER', 'CAPTAIN', 'ADMIN', 'SYSTEM_ADMIN'], true),
                 'unit'             => 'Responder assignment pending',
                 'milestone_unit'   => 'Responder assignment pending',
                 'recommendation'   => 'Responder unit assigned for on-site assessment.',

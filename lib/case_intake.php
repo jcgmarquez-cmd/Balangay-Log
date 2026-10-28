@@ -142,7 +142,7 @@ function encode_case_run(array $input, array $actor, array $opts = []): array {
             ->execute([$tmpRef, $name, $phone, $type, $narrative, $purok, $street !== '' ? $street : null, $lat, $lng, $scenarioType,
                        $score, $finalPriority, $finalPriority, $t['recommendation'], $initialStatus, $t['priority'], $review,
                        json_encode($a, JSON_UNESCAPED_UNICODE), ENGINE_VERSION, $a['legal_routing'], $a['weapon_flag'],
-                       $a['vawc_minor_flag'] ? 1 : 0, $online ? null : ($actorId ?: null), $online ? 'Unassigned' : $actorName, $locAccuracy]);
+                       $a['vawc_minor_flag'] ? 1 : 0, $online ? null : ($actorId ?: null), $online ? '' : $actorName, $locAccuracy]);
         $incidentId = (int) $pdo->lastInsertId();
 
         $trackingId = sprintf('TRK-%s-%03d', date('Y'), $incidentId);
