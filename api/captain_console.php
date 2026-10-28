@@ -114,7 +114,8 @@ try {
         $byCategory = dbRows($db, "SELECT incident_type AS category, COUNT(*) AS `count` FROM incident_reports WHERE {$dateCol} >= ? GROUP BY incident_type ORDER BY `count` DESC LIMIT 10", [$monthStart]);
 
         $cases = dbRows($db, "SELECT id, reference_number AS case_no, incident_type AS title, complainant_name AS complainant,
-                purok, priority_level AS severity, status, narrative_description AS narrative, {$dateCol} AS incident_datetime
+                purok, priority_level AS severity, status, narrative_description AS narrative, {$dateCol} AS incident_datetime,
+                NULLIF(TRIM(assigned_officer_name), '') AS assigned_officer_name, NULLIF(TRIM(deployed_unit), '') AS deployed_unit
             FROM incident_reports ORDER BY {$dateCol} DESC LIMIT 500");
 
         $endorsements = dbRows($db, "SELECT e.id, e.case_id, e.type, e.referred_at, ir.reference_number AS case_no,

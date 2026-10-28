@@ -335,11 +335,10 @@ const statusPill = s => {
     return `<span class="status-badge status-badge--${esc(cls)}">${esc(label)}</span>`;
 };
 
-/* "Assigned To": the desk officer assigned to the case (name on top), plus the deployed Tanod unit underneath once one is dispatched */
+/* "Assigned To": the desk officer who encoded or accepted the case. The dispatched Tanod unit is shown in the case details, not here. */
 const assignedCell = r => {
     const officer = pick(r, 'assigned_officer_name', 'handling_officer', 'desk_officer_name', 'assigned_officer');
-    const unit = pick(r, 'deployed_unit', 'dispatch_unit', 'responders');
-    return `<td class="assigned-cell"><strong>${esc(officer || 'Not assigned')}</strong>${unit ? `<small>${esc(unit)}</small>` : ''}</td>`;
+    return `<td class="assigned-cell"><strong>${esc(officer || 'Unassigned')}</strong></td>`;
 };
 
 function renderRegistry() {
