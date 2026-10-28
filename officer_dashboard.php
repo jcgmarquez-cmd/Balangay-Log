@@ -209,6 +209,15 @@ if (!$initials) $initials = 'OF';
         .btn-action-danger:hover {
             background: #fff3f1;
         }
+        /* Red dispatch buttons ("Acknowledge / Dispatch", "Reassign Dispatch"): same width on every card */
+        .queue-action-group > .button-danger[data-action="dispatch"] {
+            box-sizing: border-box;
+            width: 176px;
+            flex: 0 0 176px;
+            justify-content: center;
+            text-align: center;
+            white-space: nowrap;
+        }
         .tanod-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
