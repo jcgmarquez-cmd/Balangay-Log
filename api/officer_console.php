@@ -47,6 +47,10 @@ function sendCaseUpdateSms(PDO $pdo, int $incidentId, string $newStatus, string 
             $cleanPhone = '63' . $cleanPhone;
         }
 
+        if (strlen($cleanPhone) < 11) {
+            return;
+        }
+
         $name = trim($case['complainant_name'] ?? 'Resident');
         $ref = $case['reference_number']; 
         $handler = !empty($case['deployed_unit']) ? $case['deployed_unit'] : (!empty($case['assigned_officer_name']) ? $case['assigned_officer_name'] : '');
@@ -1144,13 +1148,6 @@ try {
                 'officer' => $actorName,
                 'note' => "Report rejected during triage. Reason: {$reason}",
             ]);
-
-            $idStmt = $pdo->prepare('SELECT id FROM incident_reports WHERE reference_number = ? LIMIT 1');
-            $idStmt->execute([$refNumber]);
-            $rejId = (int) $idStmt->fetchColumn();
-            if ($rejId > 0) {
-                sendCaseUpdateSms($pdo, $rejId, 'REJECTED', $reason);
-            }
 
             officerRespond(['success' => true, 'message' => "Report #{$refNumber} rejected and removed from triage."]);
 

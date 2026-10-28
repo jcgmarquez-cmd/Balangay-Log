@@ -15,9 +15,9 @@ function caseWorkflowCan(string $role, string $permission): bool
 function caseWorkflowAllowsTransition(string $from, string $to): bool
 {
     $transitions = [
-        'PENDING' => ['IN_PROGRESS', 'DISPATCHED', 'CLOSED'],
-        'UNDER_REVIEW' => ['IN_PROGRESS', 'DISPATCHED', 'CLOSED'],
-        'CRITICAL' => ['IN_PROGRESS', 'DISPATCHED', 'CLOSED'],
+        'PENDING' => ['IN_PROGRESS', 'DISPATCHED', 'REJECTED', 'CLOSED'],
+        'UNDER_REVIEW' => ['IN_PROGRESS', 'DISPATCHED', 'REJECTED', 'CLOSED'],
+        'CRITICAL' => ['IN_PROGRESS', 'DISPATCHED', 'REJECTED', 'CLOSED'],
         'IN_PROGRESS' => ['DISPATCHED', 'FOR_RESOLUTION', 'RESOLVED', 'CLOSED'],
         'DISPATCHED' => ['IN_PROGRESS', 'DISPATCHED', 'FOR_RESOLUTION', 'RESOLVED', 'CLOSED'],
         'FOR_RESOLUTION' => ['IN_PROGRESS', 'FOR_RESOLUTION', 'RESOLVED', 'CLOSED'],
